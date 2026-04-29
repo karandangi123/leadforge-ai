@@ -83,5 +83,5 @@ Distributed under the MIT License. See `LICENSE` for more information.
 
 <p align="center">
   <b>Built for Scale, Built for Speed.</b><br>
-  <i>By karandangi123 & Antigravity AI</i>
+  <i>By karandangi123 </i>
 </p>

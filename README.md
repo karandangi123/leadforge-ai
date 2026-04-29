@@ -4,7 +4,14 @@
 [![Security: Gitleaks](https://img.shields.io/badge/Security-Gitleaks-brightgreen.svg)](https://github.com/gitleaks/gitleaks)
 [![Stack: Next.js 15](https://img.shields.io/badge/Stack-Next.js%2015-black.svg)](https://nextjs.org/)
 [![Architecture: Modular Agents](https://img.shields.io/badge/Architecture-Modular%20Agents-blue.svg)](#architecture)
+[![Live Demo](https://img.shields.io/badge/Live-Demo-emerald.svg)](https://leadforge-ai-weld.vercel.app)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
+---
+
+### 🌐 [Click here to visit the Live Command Center](https://leadforge-ai-weld.vercel.app)
+
+---
 
 LeadForge AI is not just another lead scraper. It is a **Production-Grade Command Center** designed to orchestrate autonomous research agents, perform deep website audits, and generate human-in-the-loop outreach strategies at scale.
 

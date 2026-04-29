@@ -130,14 +130,14 @@ export default async function Home({
         </div>
       </header>
 
-      <section className="p-8">
+      <section className="p-4 lg:p-8 pb-32">
         {currentView === "dashboard" && (
-          <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+          <div className="space-y-6 lg:space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div>
-              <h2 className="text-2xl font-bold text-gray-900">Operations Hub</h2>
-              <p className="text-sm text-gray-500 mt-1 max-w-2xl">Monitor your autonomous research engine. Track active agent runs, overall fit accuracy, and real-time ROI across your entire pipeline.</p>
+              <h2 className="text-xl lg:text-2xl font-bold text-gray-900">Operations Hub</h2>
+              <p className="text-xs lg:text-sm text-gray-500 mt-1 max-w-full lg:max-w-2xl">Monitor your autonomous research engine. Track active agent runs, overall fit accuracy, and real-time ROI across your entire pipeline.</p>
             </div>
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
                 {agentRuns.map((item) => (
                   <div key={item.label} className="p-6 rounded-2xl bg-white border border-gray-100 shadow-sm">
                     <p className="text-[10px] font-bold uppercase text-gray-400 tracking-wider mb-2">{item.label}</p>
@@ -256,10 +256,10 @@ export default async function Home({
       </section>
 
       {/* Unified Masterpiece Signature Bar */}
-      <footer className="sticky bottom-0 z-20 border-t border-gray-100 bg-white/80 backdrop-blur-md py-2">
-        <div className="flex items-center justify-center gap-6 text-[10px] font-bold uppercase tracking-[0.15em] text-gray-400">
-          <p>© 2026 LeadForge AI • Architected by Karan Dangi</p>
-          <div className="flex items-center gap-4">
+      <footer className="sticky bottom-0 z-20 border-t border-gray-100 bg-white/80 backdrop-blur-md py-3 px-4">
+        <div className="flex flex-col lg:flex-row items-center justify-center gap-3 lg:gap-6 text-[9px] lg:text-[10px] font-bold uppercase tracking-[0.15em] text-gray-400">
+          <p className="text-center">© 2026 LeadForge AI • Architected by Karan Dangi</p>
+          <div className="flex items-center gap-4 border-t border-gray-50 pt-2 lg:border-t-0 lg:pt-0">
             <a href="https://github.com/karandangi123" target="_blank" className="hover:text-gray-900 transition-colors flex items-center gap-1.5">
               <GitPullRequest size={12} /> GitHub
             </a>
@@ -297,12 +297,12 @@ function PlaybookWizard({ playbook, databaseStatus }: { playbook: any; databaseS
         <span className="px-3 py-1 rounded-full bg-emerald-50 text-[10px] font-bold text-emerald-600 border border-emerald-100 uppercase tracking-widest">{playbook.status}</span>
       </div>
       <form action={saveWorkspacePlaybook} className="space-y-4">
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
           <input name="product" placeholder="Product name" defaultValue={playbook.product} disabled={disabled} className="p-3 rounded-lg border border-gray-100 text-sm w-full" />
           <input name="idealCustomer" placeholder="ICP" defaultValue={playbook.idealCustomer} disabled={disabled} className="p-3 rounded-lg border border-gray-100 text-sm w-full" />
         </div>
         <textarea name="pains" placeholder="Pain points" defaultValue={playbook.pains.join("\n")} disabled={disabled} className="w-full p-3 rounded-lg border border-gray-100 text-sm" rows={3} />
-        <button type="submit" disabled={disabled} className="bg-gray-900 text-white px-6 py-3 rounded-lg font-bold text-sm hover:bg-gray-800 transition-colors disabled:bg-gray-200">Save Context</button>
+        <button type="submit" disabled={disabled} className="w-full lg:w-auto bg-gray-900 text-white px-6 py-3 rounded-lg font-bold text-sm hover:bg-gray-800 transition-colors disabled:bg-gray-200">Save Context</button>
       </form>
     </div>
   );
@@ -315,7 +315,7 @@ function LeadDiscoveryPanel({ discovery, databaseStatus }: { discovery: any; dat
       <h3 className="text-xl font-bold">Autonomous Discovery</h3>
       <form action={runLeadDiscovery} className="space-y-4">
         <input name="targetMarket" placeholder="Target market (e.g. Healthcare SaaS)" defaultValue={discovery.targetMarket} disabled={disabled} className="w-full p-3 rounded-lg border border-gray-100 text-sm" />
-        <button type="submit" disabled={disabled} className="bg-emerald-600 text-white px-6 py-3 rounded-lg font-bold text-sm hover:bg-emerald-700 transition-colors disabled:bg-gray-200">Find Leads</button>
+        <button type="submit" disabled={disabled} className="w-full lg:w-auto bg-emerald-600 text-white px-6 py-3 rounded-lg font-bold text-sm hover:bg-emerald-700 transition-colors disabled:bg-gray-200">Find Leads</button>
       </form>
       {discovery.candidates.length > 0 && (
         <div className="pt-4 border-t border-gray-50">

@@ -4,6 +4,7 @@
 [![Security: Gitleaks](https://img.shields.io/badge/Security-Gitleaks-brightgreen.svg)](https://github.com/gitleaks/gitleaks)
 [![Stack: Next.js 15](https://img.shields.io/badge/Stack-Next.js%2015-black.svg)](https://nextjs.org/)
 [![Architecture: Modular Agents](https://img.shields.io/badge/Architecture-Modular%20Agents-blue.svg)](#architecture)
+[![Mobile: Supported](https://img.shields.io/badge/Mobile-Supported-brightgreen.svg)](#responsive-design)
 [![Live Demo](https://img.shields.io/badge/Live-Demo-emerald.svg)](https://leadforge-ai-weld.vercel.app)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
@@ -28,12 +29,28 @@ We have recently overhauled the entire UI/UX to follow a **View-Switcher Archite
 
 ---
 
+## 📱 Hybrid Responsive Experience
+LeadForge AI is engineered for the modern nomad. Our **Hybrid Navigation Engine** provides a seamless transition across devices:
+- **Desktop**: A persistent, data-dense sidebar for deep research and configuration.
+- **Mobile**: A high-speed, glassmorphic **Bottom Navigation Dock** for on-the-go monitoring and quick approvals.
+
+---
+
 ## 🛠️ Tech Stack & Engineering
 - **Framework**: Next.js 15 (App Router) + TypeScript.
 - **Architecture**: Modular "View-Switcher" SPA Logic.
+- **Responsive System**: Hybrid Mobile Dock + Desktop Sidebar.
 - **Database**: Prisma + Postgres/Supabase for traceable lead persistence.
 - **Styling**: Glassmorphic UI with Vanilla CSS & Framer Motion.
 - **Security**: Mandatory Gitleaks secret scanning and CodeQL static analysis.
+
+---
+
+## 🦅 Architected for Growth
+This project is more than a tool; it is a demonstration of **Applied AI Architecture.** Every component is designed for traceability, safety, and operational excellence.
+
+**Created by [Karan Dangi](https://linkedin.com/in/karan-dangi-4a672925b)**  
+*Applied AI Engineer & Growth Architect | Data Science @ NIT Bhopal*
 
 ---
 

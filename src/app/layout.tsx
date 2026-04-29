@@ -19,9 +19,9 @@ export default function RootLayout({
   return (
     <html lang="en" className="scroll-smooth">
       <body className={`${inter.variable} ${outfit.variable} font-inter antialiased bg-[#fdfdfc]`}>
-        <div className="flex h-screen overflow-hidden">
+        <div className="flex flex-col lg:flex-row min-h-screen">
           <Sidebar />
-          <main className="flex-1 overflow-y-auto bg-gray-50/50">
+          <main className="flex-1 bg-gray-50/50 min-w-0">
             {children}
           </main>
         </div>

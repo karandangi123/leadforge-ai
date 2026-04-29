@@ -88,6 +88,11 @@ cp .env.example .env
 # Add your DATABASE_URL and OPENAI_API_KEY
 ```
 
+For local development only:
+- Keep `.env` on your machine and out of version control.
+- Production and preview secrets should be set in Vercel project environment variables, not stored in repo files.
+- This repo includes `.vercelignore` so local `.env` files are not uploaded during CLI deployments.
+
 ### 4. Database Initialization
 ```bash
 npm run db:generate
@@ -114,6 +119,7 @@ Open [http://localhost:3000](http://localhost:3000) to see the agent dashboard.
 
 ## 🛡️ Security & Reliability
 - **Zero-Leak Policy**: Integrated `gitleaks` protection.
+- **Deployment Secret Guardrails**: Local `.env` files are excluded from Vercel CLI uploads; use Vercel-managed environment variables for hosted deployments.
 - **Deterministic Fallbacks**: Lead actions function via local fallback mode if LLM keys are missing.
 - **Product + ICP Playbook**: Workspace-level product, target customer, pains, proof points, industries, and tone guide agent runs.
 - **Compliant Lead Discovery**: Target-market discovery generates query plans and scored candidates from safe public-source categories. LinkedIn is manual import only.

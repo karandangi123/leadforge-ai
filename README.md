@@ -281,7 +281,12 @@ Give it a ⭐ and follow the journey.
 Applied AI Engineer • Builder • Growth Systems
 🎓 MANIT / NIT Bhopal
 
-🔗 LinkedIn: [https://www.linkedin.com/in/karan-dangi-4a672925b](https://www.linkedin.com/in/karan-dangi-4a672925b)
+<p align="left">
+  <a href="https://github.com/karandangi123"><img src="https://img.shields.io/badge/GitHub-karandangi123-111827?style=flat-square&logo=github&logoColor=white" alt="GitHub" /></a>
+  <a href="https://www.linkedin.com/in/karan-dangi-4a672925b"><img src="https://img.shields.io/badge/LinkedIn-Karan_Dangi-0A66C2?style=flat-square&logo=linkedin&logoColor=white" alt="LinkedIn" /></a>
+  <a href="https://leadforge-ai-weld.vercel.app"><img src="https://img.shields.io/badge/Live-LeadForge_AI-176b5d?style=flat-square" alt="LeadForge AI Live" /></a>
+</p>
+
 
 ---
 

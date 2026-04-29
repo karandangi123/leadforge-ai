@@ -85,3 +85,7 @@ Distributed under the MIT License. See `LICENSE` for more information.
   <b>Built for Scale, Built for Speed.</b><br>
   <i>By Karan Dangi (@karandangi123)</i>
 </p>
+
+---
+### 📫 Connect with Me
+[LinkedIn](https://www.linkedin.com/in/karan-dangi-4a672925b)

@@ -1,20 +1,32 @@
-# 🦅 LeadForge AI: The Revenue Operations Agentic Engine
+# ⚡️ LeadForge AI: Autonomous RevOps Architect
+> **Enterprise-grade AI Command Center for high-scale revenue operations. Modular, traceable, and architected for growth.**
 
-[![GitHub Stars](https://img.shields.io/github/stars/karandangi123/leadforge-ai?style=for-the-badge&color=gold)](https://github.com/karandangi123/leadforge-ai)
-[![Next.js](https://img.shields.io/badge/Next.js-15+-000000?style=for-the-badge&logo=next.js)](https://nextjs.org/)
-[![React](https://img.shields.io/badge/React-19-61DAFB?style=for-the-badge&logo=react)](https://react.dev/)
-[![Security: Gitleaks](https://img.shields.io/badge/Security-Gitleaks-green.svg?style=for-the-badge)](https://github.com/gitleaks/gitleaks)
+[![Security: Gitleaks](https://img.shields.io/badge/Security-Gitleaks-brightgreen.svg)](https://github.com/gitleaks/gitleaks)
+[![Stack: Next.js 15](https://img.shields.io/badge/Stack-Next.js%2015-black.svg)](https://nextjs.org/)
+[![Architecture: Modular Agents](https://img.shields.io/badge/Architecture-Modular%20Agents-blue.svg)](#architecture)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-**LeadForge AI** is a production-grade AI Revenue Operations (RevOps) engine designed for the 2026 AI era. It orchestrates autonomous agents for lead research, website audits, and personalized outreach—all while maintaining strict **Human-in-the-loop (HITL)** oversight.
+LeadForge AI is not just another lead scraper. It is a **Production-Grade Command Center** designed to orchestrate autonomous research agents, perform deep website audits, and generate human-in-the-loop outreach strategies at scale.
 
 ---
 
-## ⚡ Core Value Proposition
-Most AI lead-gen tools fail because they are "black boxes." **LeadForge AI** solves this with:
-- 🛠️ **Agentic Workflows**: Multi-step research and audit agents.
-- 🤝 **HITL Approvals**: Human operators review and refine AI outputs before they reach clients.
-- 🔍 **Traceability**: Every AI decision is cited and logged for auditability.
-- 🧪 **Eval-Driven**: Each agent action can be scored for quality, safety, and readiness before review.
+## 🏗️ New: The Modular Command Center
+We have recently overhauled the entire UI/UX to follow a **View-Switcher Architecture**, providing a focused workspace for every stage of the RevOps lifecycle:
+
+- **🕹️ Operations Hub**: Central command for monitoring agent performance and real-time ROI.
+- **🧠 Intelligence Playbook**: Define your ICP and train agents with deep product context.
+- **🕵️ Autonomous Discovery**: Let agents hunt for high-intent leads across the web.
+- **📋 Lead Pipeline**: A high-fidelity data grid for inspecting research and approving actions.
+- **🛡️ Security & Evals**: Built-in safeguards to ensure agent alignment and quality.
+
+---
+
+## 🛠️ Tech Stack & Engineering
+- **Framework**: Next.js 15 (App Router) + TypeScript.
+- **Architecture**: Modular "View-Switcher" SPA Logic.
+- **Database**: Prisma + Postgres/Supabase for traceable lead persistence.
+- **Styling**: Glassmorphic UI with Vanilla CSS & Framer Motion.
+- **Security**: Mandatory Gitleaks secret scanning and CodeQL static analysis.
 
 ---
 

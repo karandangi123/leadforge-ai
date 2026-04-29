@@ -2,11 +2,10 @@
 > **Enterprise-grade AI Command Center for high-scale revenue operations. Modular, traceable, and architected for growth.**
 
 [![Security: Gitleaks](https://img.shields.io/badge/Security-Gitleaks-brightgreen.svg)](https://github.com/gitleaks/gitleaks)
-[![Stack: Next.js 15](https://img.shields.io/badge/Stack-Next.js%2015-black.svg)](https://nextjs.org/)
-[![Architecture: Modular Agents](https://img.shields.io/badge/Architecture-Modular%20Agents-blue.svg)](#architecture)
-[![Mobile: Supported](https://img.shields.io/badge/Mobile-Supported-brightgreen.svg)](#responsive-design)
-[![Live Demo](https://img.shields.io/badge/Live-Demo-emerald.svg)](https://leadforge-ai-weld.vercel.app)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Architecture: Hybrid SPA](https://img.shields.io/badge/Architecture-Hybrid%20SPA-blue.svg)](#architecture)
+[![Interface: On--Demand%20Mobile](https://img.shields.io/badge/Interface-On--Demand%20Mobile-emerald.svg)](#hybrid-navigational-shell)
+[![Production: Live](https://img.shields.io/badge/Production-Live-blueviolet.svg)](https://leadforge-ai-weld.vercel.app)
+[![License: MIT](https://img.shields.io/badge/License-MIT-gray.svg)](LICENSE)
 
 ---
 
@@ -29,20 +28,18 @@ We have recently overhauled the entire UI/UX to follow a **View-Switcher Archite
 
 ---
 
-## 📱 Hybrid Responsive Experience
-LeadForge AI is engineered for the modern nomad. Our **Hybrid Navigation Engine** provides a seamless transition across devices:
-- **Desktop**: A persistent, data-dense sidebar for deep research and configuration.
-- **Mobile**: A high-speed, glassmorphic **Bottom Navigation Dock** for on-the-go monitoring and quick approvals.
+## 🏛️ Hybrid Navigational Shell
+LeadForge AI implements a **Universal Viewport Strategy** to ensure zero operational friction.
+- **Desktop Strategy**: A persistent, high-density navigational sidebar for complex orchestration and audit depth.
+- **Mobile Strategy**: A minimalist, **On-Demand Navigational Dock** toggled via the Brand-Icon, optimized for high-speed approvals and real-time monitoring.
 
 ---
 
-## 🛠️ Tech Stack & Engineering
-- **Framework**: Next.js 15 (App Router) + TypeScript.
-- **Architecture**: Modular "View-Switcher" SPA Logic.
-- **Responsive System**: Hybrid Mobile Dock + Desktop Sidebar.
-- **Database**: Prisma + Postgres/Supabase for traceable lead persistence.
-- **Styling**: Glassmorphic UI with Vanilla CSS & Framer Motion.
-- **Security**: Mandatory Gitleaks secret scanning and CodeQL static analysis.
+## 🛠️ Engineering & Traceability
+- **Foundation**: Next.js 16 (Turbopack) + TypeScript for type-safe agentic logic.
+- **Core Engine**: State-based Modular SPA Architecture.
+- **Data Persistence**: Prisma ORM with deterministic relational mapping.
+- **Security Posture**: Automated secret-redaction (Gitleaks) + CodeQL vulnerability analysis.
 
 ---
 

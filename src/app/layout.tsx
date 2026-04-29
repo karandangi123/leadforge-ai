@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { Inter, Outfit } from "next/font/google";
 import "./globals.css";
 import { Sidebar } from "@/components/sidebar";
@@ -20,7 +21,9 @@ export default function RootLayout({
     <html lang="en" className="scroll-smooth">
       <body className={`${inter.variable} ${outfit.variable} font-inter antialiased bg-[#fdfdfc]`}>
         <div className="flex flex-col lg:flex-row min-h-screen">
-          <Sidebar />
+          <Suspense fallback={<div className="hidden w-72 border-r border-gray-100 bg-white lg:block" />}>
+            <Sidebar />
+          </Suspense>
           <main className="flex-1 bg-gray-50/50 min-w-0">
             {children}
           </main>

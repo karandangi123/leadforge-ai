@@ -11,7 +11,7 @@ import { Client } from "pg";
 import { z } from "zod";
 
 import { ApprovalStatus, DraftChannel, LeadStatus } from "@/generated/prisma/enums";
-import { auditWebsite, draftOutreach, prepareClientOps, researchLead } from "@/lib/ai-agents";
+import { auditWebsite, draftOutreach, prepareClientOps, researchLead, roastWebsite, runGrowthMode, spyCompetitor } from "@/lib/ai-agents";
 import { evaluateOutreach, evaluateResearch, evaluateWebsiteAudit } from "@/lib/evaluations";
 import { getPrisma, hasDatabaseUrl, resetPrisma } from "@/lib/prisma";
 
@@ -21,6 +21,9 @@ const addLeadSchema = z.object({
   contactName: z.string().trim().max(120).optional(),
   contactEmail: z.string().trim().email().optional().or(z.literal("")),
   segment: z.string().trim().max(100).optional(),
+  ownerName: z.string().trim().max(120).optional(),
+  tags: z.string().trim().max(400).optional(),
+  notes: z.string().trim().max(4000).optional(),
 });
 const playbookSchema = z.object({
   product: z.string().trim().min(3).max(500),
@@ -39,11 +42,148 @@ const candidateSchema = z.object({
 });
 
 const outcomeSchema = z.enum(["EMAIL_SENT", "REPLIED", "MEETING_BOOKED", "WON", "LOST"]);
+const metadataSchema = z.object({
+  leadId: z.string().trim().min(2),
+  website: z.string().trim().url().optional().or(z.literal("")),
+  contactName: z.string().trim().max(120).optional(),
+  contactEmail: z.string().trim().email().optional().or(z.literal("")),
+  segment: z.string().trim().max(100).optional(),
+  ownerName: z.string().trim().max(120).optional(),
+  notes: z.string().trim().max(4000).optional(),
+  tags: z.string().trim().max(400).optional(),
+});
+const moveLeadStageSchema = z.object({
+  leadId: z.string().trim().min(2),
+  status: z.nativeEnum(LeadStatus),
+  manualStatusReason: z.string().trim().min(3).max(400),
+  returnTo: z.string().trim().optional(),
+});
+const humanNextActionSchema = z.object({
+  leadId: z.string().trim().min(2),
+  humanNextAction: z.string().trim().max(240),
+});
+const websiteRoastSchema = z.object({
+  url: z.string().trim().url(),
+  notes: z.string().trim().max(1000).optional(),
+});
+const competitorSpySchema = z.object({
+  url: z.string().trim().url(),
+  notes: z.string().trim().max(1000).optional(),
+});
+const growthModeSchema = z.object({
+  prompt: z.string().trim().min(8).max(1200),
+  context: z.string().trim().max(1200).optional(),
+});
 const localSetupSchema = z.object({
   databaseUrl: z.string().trim().url().startsWith("postgres"),
   openaiApiKey: z.string().trim().optional(),
 });
 const execFileAsync = promisify(execFile);
+
+export type CsvImportState = {
+  message: string;
+  results: Array<{
+    row: number;
+    company: string;
+    status: "created" | "skipped duplicate" | "invalid row" | "needs review";
+    detail: string;
+  }>;
+};
+
+export type WebsiteRoastState = {
+  message: string;
+  result: null | {
+    companyName: string;
+    url: string;
+    mode: "openai" | "fallback";
+    model: string;
+    overallScore: number;
+    designScore: number;
+    trustScore: number;
+    speedScore: number;
+    seoScore: number;
+    conversionScore: number;
+    headlineRewrite: string;
+    subheadlineRewrite: string;
+    ctaRewrite: string;
+    summary: string;
+    topFindings: string[];
+    quickWins: string[];
+    revenueOpportunity: {
+      estimatedMonthlyVisitors: number;
+      currentConversionRate: number;
+      improvedConversionRate: number;
+      estimatedAdditionalMonthlyLeads: number;
+      estimatedMonthlyRevenueLiftUsd: number;
+    };
+  };
+};
+
+export type CompetitorSpyState = {
+  message: string;
+  result: null | {
+    competitorName: string;
+    url: string;
+    mode: "openai" | "fallback";
+    model: string;
+    summary: string;
+    offerPositioning: string;
+    ctaStyle: string;
+    funnelObservation: string;
+    keywordAngles: string[];
+    strengths: string[];
+    weaknesses: string[];
+    differentiationMoves: string[];
+    quickAttackPlan: {
+      homepageAngle: string;
+      proofStrategy: string;
+      ctaStrategy: string;
+    };
+  };
+};
+
+export type GrowthModeState = {
+  message: string;
+  result: null | {
+    businessName: string;
+    targetOutcome: string;
+    mode: "openai" | "fallback";
+    model: string;
+    summary: string;
+    icp: {
+      primaryBuyer: string;
+      painPoints: string[];
+      industries: string[];
+    };
+    offer: {
+      coreOffer: string;
+      pricingAngle: string;
+      proofHooks: string[];
+    };
+    leadSources: Array<{
+      channel: string;
+      whyItWorks: string;
+      firstMove: string;
+    }>;
+    outreachPlan: {
+      openingAngle: string;
+      channels: string[];
+      cadence: string[];
+    };
+    websiteFixes: string[];
+    contentPlan: string[];
+    dailyExecutionPlan: string[];
+    kpis: Array<{
+      label: string;
+      target: string;
+    }>;
+    ninetyDayPlan: {
+      days0to30: string[];
+      days31to60: string[];
+      days61to90: string[];
+    };
+  };
+};
 
 export async function saveLocalSetup(formData: FormData) {
   const parsed = localSetupSchema.safeParse({
@@ -94,6 +234,9 @@ export async function addLead(formData: FormData) {
     contactName: formData.get("contactName"),
     contactEmail: formData.get("contactEmail"),
     segment: formData.get("segment"),
+    ownerName: formData.get("ownerName"),
+    tags: formData.get("tags"),
+    notes: formData.get("notes"),
   });
 
   if (!parsed.success) {
@@ -110,6 +253,17 @@ export async function addLead(formData: FormData) {
     },
   });
 
+  const duplicateResult = await classifyDuplicateLead(prisma, workspace.id, {
+    company: parsed.data.company,
+    website: parsed.data.website || null,
+    contactEmail: parsed.data.contactEmail || null,
+    segment: parsed.data.segment || null,
+  });
+
+  if (duplicateResult === "duplicate") {
+    redirect("/?lead=duplicate#dashboard");
+  }
+
   await prisma.lead.create({
     data: {
       workspaceId: workspace.id,
@@ -118,6 +272,9 @@ export async function addLead(formData: FormData) {
       contactName: parsed.data.contactName || null,
       contactEmail: parsed.data.contactEmail || null,
       segment: parsed.data.segment || null,
+      ownerName: parsed.data.ownerName || null,
+      notes: parsed.data.notes || null,
+      tags: parseTagInput(parsed.data.tags),
       status: LeadStatus.RESEARCH,
       source: "manual",
       nextAction: "Run AI research",
@@ -128,6 +285,7 @@ export async function addLead(formData: FormData) {
           input: {
             company: parsed.data.company,
             website: parsed.data.website || null,
+            tags: parseTagInput(parsed.data.tags),
           },
           output: {
             nextAction: "Run AI research",
@@ -139,6 +297,478 @@ export async function addLead(formData: FormData) {
 
   revalidatePath("/");
   redirect("/?lead=created#dashboard");
+}
+
+export async function updateLeadMetadata(formData: FormData) {
+  if (!hasDatabaseUrl()) {
+    redirect("/?lead=db-not-configured#dashboard");
+  }
+
+  const parsed = metadataSchema.safeParse({
+    leadId: formData.get("leadId"),
+    website: formData.get("website"),
+    contactName: formData.get("contactName"),
+    contactEmail: formData.get("contactEmail"),
+    segment: formData.get("segment"),
+    ownerName: formData.get("ownerName"),
+    notes: formData.get("notes"),
+    tags: formData.get("tags"),
+  });
+
+  if (!parsed.success) {
+    redirect(`/leads/${String(formData.get("leadId") ?? "")}?run=invalid`);
+  }
+
+  const { leadId } = parsed.data;
+
+  try {
+    const prisma = getPrisma();
+    await prisma.lead.update({
+      where: { id: leadId },
+      data: {
+        website: parsed.data.website || null,
+        contactName: parsed.data.contactName || null,
+        contactEmail: parsed.data.contactEmail || null,
+        segment: parsed.data.segment || null,
+        ownerName: parsed.data.ownerName || null,
+        notes: parsed.data.notes || null,
+        tags: parseTagInput(parsed.data.tags),
+        agentTraces: {
+          create: {
+            agentName: "Operator Override",
+            status: "SUCCEEDED",
+            input: { leadId, action: "update-metadata" },
+            output: {
+              website: parsed.data.website || null,
+              contactName: parsed.data.contactName || null,
+              contactEmail: parsed.data.contactEmail || null,
+              segment: parsed.data.segment || null,
+              ownerName: parsed.data.ownerName || null,
+              tags: parseTagInput(parsed.data.tags),
+            },
+          },
+        },
+      },
+    });
+  } catch (error) {
+    unstable_rethrow(error);
+    redirect(`/leads/${leadId}?run=db-unavailable`);
+  }
+
+  revalidatePath(`/leads/${leadId}`);
+  revalidatePath("/");
+  redirect(`/leads/${leadId}?run=metadata`);
+}
+
+export async function moveLeadStage(formData: FormData) {
+  if (!hasDatabaseUrl()) {
+    redirect("/?lead=db-not-configured#dashboard");
+  }
+
+  const parsed = moveLeadStageSchema.safeParse({
+    leadId: formData.get("leadId"),
+    status: formData.get("status"),
+    manualStatusReason: formData.get("manualStatusReason"),
+    returnTo: formData.get("returnTo"),
+  });
+
+  if (!parsed.success) {
+    redirect(`/leads/${String(formData.get("leadId") ?? "")}?run=invalid`);
+  }
+
+  const { leadId, status, manualStatusReason } = parsed.data;
+
+  if (status === LeadStatus.REJECTED && manualStatusReason.length < 3) {
+    redirect(`/leads/${leadId}?run=invalid`);
+  }
+
+  try {
+    const prisma = getPrisma();
+    const lead = await prisma.lead.findUnique({ where: { id: leadId } });
+
+    if (!lead) {
+      redirect(`/leads/${leadId}?run=missing`);
+    }
+
+    await prisma.lead.update({
+      where: { id: leadId },
+      data: {
+        status,
+        manualStatusReason,
+        agentTraces: {
+          create: {
+            agentName: "Operator Override",
+            status: "SUCCEEDED",
+            input: {
+              leadId,
+              fromStatus: lead.status,
+              toStatus: status,
+            },
+            output: {
+              reason: manualStatusReason,
+              aiNextAction: lead.nextAction,
+              humanNextAction: lead.humanNextAction,
+            },
+          },
+        },
+      },
+    });
+  } catch (error) {
+    unstable_rethrow(error);
+    redirect(`/leads/${leadId}?run=db-unavailable`);
+  }
+
+  revalidatePath(`/leads/${leadId}`);
+  revalidatePath("/");
+  redirect(parsed.data.returnTo || `/leads/${leadId}?run=stage-moved`);
+}
+
+export async function setLeadHumanNextAction(formData: FormData) {
+  if (!hasDatabaseUrl()) {
+    redirect("/?lead=db-not-configured#dashboard");
+  }
+
+  const parsed = humanNextActionSchema.safeParse({
+    leadId: formData.get("leadId"),
+    humanNextAction: formData.get("humanNextAction"),
+  });
+
+  if (!parsed.success) {
+    redirect(`/leads/${String(formData.get("leadId") ?? "")}?run=invalid`);
+  }
+
+  const { leadId, humanNextAction } = parsed.data;
+
+  try {
+    const prisma = getPrisma();
+    await prisma.lead.update({
+      where: { id: leadId },
+      data: {
+        humanNextAction: humanNextAction || null,
+        agentTraces: {
+          create: {
+            agentName: "Operator Override",
+            status: "SUCCEEDED",
+            input: { leadId, action: "set-human-next-action" },
+            output: {
+              humanNextAction: humanNextAction || null,
+            },
+          },
+        },
+      },
+    });
+  } catch (error) {
+    unstable_rethrow(error);
+    redirect(`/leads/${leadId}?run=db-unavailable`);
+  }
+
+  revalidatePath(`/leads/${leadId}`);
+  revalidatePath("/");
+  redirect(`/leads/${leadId}?run=next-action`);
+}
+
+export async function importLeadsCsv(_prevState: CsvImportState, formData: FormData): Promise<CsvImportState> {
+  if (!hasDatabaseUrl()) {
+    return {
+      message: "Connect Postgres before importing leads.",
+      results: [],
+    };
+  }
+
+  const file = formData.get("csvFile");
+  if (!(file instanceof File) || file.size === 0) {
+    return {
+      message: "Choose a CSV file with at least one lead row.",
+      results: [],
+    };
+  }
+
+  const text = await file.text();
+  const rows = parseCsvRows(text);
+
+  if (rows.length <= 1) {
+    return {
+      message: "The CSV needs a header row and at least one lead row.",
+      results: [],
+    };
+  }
+
+  try {
+    const prisma = getPrisma();
+    const workspace = await prisma.workspace.upsert({
+      where: { slug: "demo" },
+      update: {},
+      create: {
+        name: "Demo Workspace",
+        slug: "demo",
+      },
+    });
+
+    const header = rows[0].map((item) => item.trim());
+    const results: CsvImportState["results"] = [];
+
+    for (const [index, rawRow] of rows.slice(1).entries()) {
+      const rowNumber = index + 2;
+      const rowRecord = Object.fromEntries(header.map((key, keyIndex) => [key, rawRow[keyIndex] ?? ""]));
+      const parsedRow = addLeadSchema.safeParse({
+        company: rowRecord.company,
+        website: rowRecord.website,
+        contactName: rowRecord.contactName,
+        contactEmail: rowRecord.contactEmail,
+        segment: rowRecord.segment,
+        ownerName: rowRecord.owner,
+        tags: rowRecord.tags,
+        notes: rowRecord.notes,
+      });
+
+      if (!parsedRow.success) {
+        results.push({
+          row: rowNumber,
+          company: String(rowRecord.company ?? "").trim() || `Row ${rowNumber}`,
+          status: "invalid row",
+          detail: "Required fields are missing or a URL/email format is invalid.",
+        });
+        continue;
+      }
+
+      const duplicateResult = await classifyDuplicateLead(prisma, workspace.id, {
+        company: parsedRow.data.company,
+        website: parsedRow.data.website || null,
+        contactEmail: parsedRow.data.contactEmail || null,
+        segment: parsedRow.data.segment || null,
+      });
+
+      if (duplicateResult === "duplicate") {
+        results.push({
+          row: rowNumber,
+          company: parsedRow.data.company,
+          status: "skipped duplicate",
+          detail: "Exact website, email, or company+segment match already exists.",
+        });
+        continue;
+      }
+
+      if (duplicateResult === "needs_review") {
+        results.push({
+          row: rowNumber,
+          company: parsedRow.data.company,
+          status: "needs review",
+          detail: "A similar company already exists, but the match is ambiguous.",
+        });
+        continue;
+      }
+
+      await prisma.lead.create({
+        data: {
+          workspaceId: workspace.id,
+          company: parsedRow.data.company,
+          website: parsedRow.data.website || null,
+          contactName: parsedRow.data.contactName || null,
+          contactEmail: parsedRow.data.contactEmail || null,
+          segment: parsedRow.data.segment || null,
+          ownerName: parsedRow.data.ownerName || null,
+          notes: parsedRow.data.notes || null,
+          tags: parseTagInput(parsedRow.data.tags),
+          status: LeadStatus.RESEARCH,
+          source: "csv_import",
+          nextAction: "Run AI research",
+          agentTraces: {
+            create: {
+              agentName: "Lead Intake",
+              status: "SUCCEEDED",
+              input: {
+                company: parsedRow.data.company,
+                source: "csv_import",
+              },
+              output: {
+                nextAction: "Run AI research",
+              },
+            },
+          },
+        },
+      });
+
+      results.push({
+        row: rowNumber,
+        company: parsedRow.data.company,
+        status: "created",
+        detail: "Lead was saved and entered the research queue.",
+      });
+    }
+
+    revalidatePath("/");
+    return {
+      message: `Processed ${results.length} row${results.length === 1 ? "" : "s"}.`,
+      results,
+    };
+  } catch (error) {
+    unstable_rethrow(error);
+    return {
+      message: "The import could not reach the database.",
+      results: [],
+    };
+  }
+}
+
+export async function runWebsiteRoast(
+  _prevState: WebsiteRoastState,
+  formData: FormData,
+): Promise<WebsiteRoastState> {
+  const parsed = websiteRoastSchema.safeParse({
+    url: formData.get("url"),
+    notes: formData.get("notes"),
+  });
+
+  if (!parsed.success) {
+    return {
+      message: "Enter a valid website URL to generate the roast.",
+      result: null,
+    };
+  }
+
+  try {
+    const result = await roastWebsite({
+      url: parsed.data.url,
+      notes: parsed.data.notes,
+    });
+
+    return {
+      message:
+        result.mode === "openai"
+          ? `Roast generated with ${result.model}.`
+          : "Roast generated in fallback mode. Add OPENAI_API_KEY for a live AI pass.",
+      result: {
+        companyName: result.data.companyName,
+        url: parsed.data.url,
+        mode: result.mode,
+        model: result.model,
+        overallScore: result.data.overallScore,
+        designScore: result.data.designScore,
+        trustScore: result.data.trustScore,
+        speedScore: result.data.speedScore,
+        seoScore: result.data.seoScore,
+        conversionScore: result.data.conversionScore,
+        headlineRewrite: result.data.headlineRewrite,
+        subheadlineRewrite: result.data.subheadlineRewrite,
+        ctaRewrite: result.data.ctaRewrite,
+        summary: result.data.summary,
+        topFindings: result.data.topFindings,
+        quickWins: result.data.quickWins,
+        revenueOpportunity: result.data.revenueOpportunity,
+      },
+    };
+  } catch (error) {
+    unstable_rethrow(error);
+    return {
+      message: "The roast could not be generated right now.",
+      result: null,
+    };
+  }
+}
+
+export async function runCompetitorSpy(
+  _prevState: CompetitorSpyState,
+  formData: FormData,
+): Promise<CompetitorSpyState> {
+  const parsed = competitorSpySchema.safeParse({
+    url: formData.get("url"),
+    notes: formData.get("notes"),
+  });
+
+  if (!parsed.success) {
+    return {
+      message: "Enter a valid competitor URL to generate the spy brief.",
+      result: null,
+    };
+  }
+
+  try {
+    const result = await spyCompetitor({
+      url: parsed.data.url,
+      notes: parsed.data.notes,
+    });
+
+    return {
+      message:
+        result.mode === "openai"
+          ? `Competitor brief generated with ${result.model}.`
+          : "Competitor brief generated in fallback mode. Add OPENAI_API_KEY for a live AI pass.",
+      result: {
+        competitorName: result.data.competitorName,
+        url: parsed.data.url,
+        mode: result.mode,
+        model: result.model,
+        summary: result.data.summary,
+        offerPositioning: result.data.offerPositioning,
+        ctaStyle: result.data.ctaStyle,
+        funnelObservation: result.data.funnelObservation,
+        keywordAngles: result.data.keywordAngles,
+        strengths: result.data.strengths,
+        weaknesses: result.data.weaknesses,
+        differentiationMoves: result.data.differentiationMoves,
+        quickAttackPlan: result.data.quickAttackPlan,
+      },
+    };
+  } catch (error) {
+    unstable_rethrow(error);
+    return {
+      message: "The competitor brief could not be generated right now.",
+      result: null,
+    };
+  }
+}
+
+export async function executeGrowthMode(
+  _prevState: GrowthModeState,
+  formData: FormData,
+): Promise<GrowthModeState> {
+  const parsed = growthModeSchema.safeParse({
+    prompt: formData.get("prompt"),
+    context: formData.get("context"),
+  });
+
+  if (!parsed.success) {
+    return {
+      message: "Enter a clear growth prompt so LeadForge can generate the strategy brief.",
+      result: null,
+    };
+  }
+
+  try {
+    const result = await runGrowthMode({
+      prompt: parsed.data.prompt,
+      context: parsed.data.context,
+    });
+
+    return {
+      message:
+        result.mode === "openai"
+          ? `Growth strategy generated with ${result.model}.`
+          : "Growth strategy generated in fallback mode. Add OPENAI_API_KEY for a live AI pass.",
+      result: {
+        businessName: result.data.businessName,
+        targetOutcome: result.data.targetOutcome,
+        mode: result.mode,
+        model: result.model,
+        summary: result.data.summary,
+        icp: result.data.icp,
+        offer: result.data.offer,
+        leadSources: result.data.leadSources,
+        outreachPlan: result.data.outreachPlan,
+        websiteFixes: result.data.websiteFixes,
+        contentPlan: result.data.contentPlan,
+        dailyExecutionPlan: result.data.dailyExecutionPlan,
+        kpis: result.data.kpis,
+        ninetyDayPlan: result.data.ninetyDayPlan,
+      },
+    };
+  } catch (error) {
+    unstable_rethrow(error);
+    return {
+      message: "The growth strategy could not be generated right now.",
+      result: null,
+    };
+  }
 }
 
 export async function saveWorkspacePlaybook(formData: FormData) {
@@ -773,6 +1403,7 @@ export async function recordLeadOutcome(formData: FormData) {
 async function reviewLeadWork(formData: FormData, decision: "approve" | "reject") {
   const leadId = readLeadId(formData);
   const approvalId = readApprovalId(formData);
+  const returnTo = formData.get("returnTo");
 
   if (!hasDatabaseUrl()) {
     redirect(`/leads/${leadId}?run=db-not-configured`);
@@ -843,7 +1474,7 @@ async function reviewLeadWork(formData: FormData, decision: "approve" | "reject"
 
   revalidatePath(`/leads/${leadId}`);
   revalidatePath("/");
-  redirect(`/leads/${leadId}?run=${decision}`);
+  redirect(typeof returnTo === "string" && returnTo.length > 0 ? returnTo : `/leads/${leadId}?run=${decision}`);
 }
 
 function readLeadId(formData: FormData) {
@@ -870,12 +1501,141 @@ function appendReviewNote(current: string | null, next: string) {
   return current ? `${current}\n\n${next}` : next;
 }
 
+function parseTagInput(value: string | undefined) {
+  if (!value) {
+    return [];
+  }
+
+  return value
+    .split(/\n|,/)
+    .map((item) => item.trim().toLowerCase())
+    .filter(Boolean)
+    .slice(0, 12)
+    .map((item) => item.slice(0, 32));
+}
+
 function parseListInput(value: string) {
   return value
     .split(/\n|,/)
     .map((item) => item.trim())
     .filter(Boolean)
     .slice(0, 12);
+}
+
+async function classifyDuplicateLead(
+  prisma: ReturnType<typeof getPrisma>,
+  workspaceId: string,
+  input: {
+    company: string;
+    website: string | null;
+    contactEmail: string | null;
+    segment: string | null;
+  },
+) {
+  const normalizedCompany = normalizeCompany(input.company);
+  const normalizedWebsite = normalizeWebsite(input.website);
+  const normalizedEmail = normalizeEmail(input.contactEmail);
+  const existing = await prisma.lead.findMany({
+    where: { workspaceId },
+    select: {
+      company: true,
+      website: true,
+      contactEmail: true,
+      segment: true,
+    },
+  });
+
+  for (const lead of existing) {
+    if (normalizedWebsite && normalizeWebsite(lead.website) === normalizedWebsite) {
+      return "duplicate" as const;
+    }
+    if (normalizedEmail && normalizeEmail(lead.contactEmail) === normalizedEmail) {
+      return "duplicate" as const;
+    }
+
+    if (
+      normalizeCompany(lead.company) === normalizedCompany &&
+      normalizeSegment(lead.segment) === normalizeSegment(input.segment)
+    ) {
+      return "duplicate" as const;
+    }
+
+    if (normalizeCompany(lead.company) === normalizedCompany) {
+      return "needs_review" as const;
+    }
+  }
+
+  return "unique" as const;
+}
+
+function normalizeCompany(value: string | null | undefined) {
+  return (value ?? "").trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+function normalizeSegment(value: string | null | undefined) {
+  return (value ?? "").trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+function normalizeWebsite(value: string | null | undefined) {
+  if (!value) {
+    return "";
+  }
+
+  return value.trim().toLowerCase().replace(/^https?:\/\//, "").replace(/\/$/, "");
+}
+
+function normalizeEmail(value: string | null | undefined) {
+  return (value ?? "").trim().toLowerCase();
+}
+
+function parseCsvRows(text: string) {
+  const rows: string[][] = [];
+  let current = "";
+  let row: string[] = [];
+  let inQuotes = false;
+
+  for (let index = 0; index < text.length; index += 1) {
+    const char = text[index];
+    const next = text[index + 1];
+
+    if (char === '"') {
+      if (inQuotes && next === '"') {
+        current += '"';
+        index += 1;
+      } else {
+        inQuotes = !inQuotes;
+      }
+      continue;
+    }
+
+    if (char === "," && !inQuotes) {
+      row.push(current);
+      current = "";
+      continue;
+    }
+
+    if ((char === "\n" || char === "\r") && !inQuotes) {
+      if (char === "\r" && next === "\n") {
+        index += 1;
+      }
+      row.push(current);
+      if (row.some((item) => item.trim().length > 0)) {
+        rows.push(row);
+      }
+      row = [];
+      current = "";
+      continue;
+    }
+
+    current += char;
+  }
+
+  row.push(current);
+  if (row.some((item) => item.trim().length > 0)) {
+    rows.push(row);
+  }
+
+  return rows;
 }
 
 function mapAgentPlaybook(
@@ -1110,6 +1870,9 @@ async function createSampleLeadRecord(source: string) {
       contactName: "Priya Raman",
       contactEmail: "priya@atlasclinic.example",
       segment: "Healthcare operations",
+      ownerName: "Karan Dangi",
+      notes: "Sample lead created for first-run onboarding and demo screenshots.",
+      tags: ["sample", "healthcare", "demo"],
       status: LeadStatus.RESEARCH,
       source: "sample",
       nextAction: "Run AI research",

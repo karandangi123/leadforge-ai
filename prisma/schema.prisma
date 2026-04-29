@@ -107,6 +107,11 @@ model Lead {
   contactName       String?
   contactEmail      String?
   segment           String?
+  ownerName         String?
+  notes             String?
+  tags              Json               @default("[]")
+  manualStatusReason String?
+  humanNextAction   String?
   source            String             @default("manual")
   status            LeadStatus         @default(NEW)
   fitScore          Int?

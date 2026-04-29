@@ -14,7 +14,7 @@ Most AI lead-gen tools fail because they are "black boxes." **LeadForge AI** sol
 - 🛠️ **Agentic Workflows**: Multi-step research and audit agents.
 - 🤝 **HITL Approvals**: Human operators review and refine AI outputs before they reach clients.
 - 🔍 **Traceability**: Every AI decision is cited and logged for auditability.
-- 🧪 **Eval-Driven**: Prompt versioning and evaluation datasets are core to the architecture.
+- 🧪 **Eval-Driven**: Each agent action can be scored for quality, safety, and readiness before review.
 
 ---
 
@@ -27,7 +27,9 @@ graph TD
     AgentRunner -->|Research| WebScraper[Website Auditor]
     AgentRunner -->|Enrichment| DB[(PostgreSQL / Prisma 7)]
     AgentRunner -->|Generation| OpenAI[GPT-4o / GPT-5.2]
+    AgentRunner -->|Quality Gates| Evals[Agent Evaluations]
     AgentRunner -->|Drafts| Outreach[Personalized Generator]
+    Outreach -->|Client Ops| Integrations[Gmail / CRM / Airtable Prep]
     Outreach -->|Review| User
 ```
 
@@ -64,17 +66,34 @@ npm run dev
 ```
 Open [http://localhost:3000](http://localhost:3000) to see the agent dashboard.
 
+### First Run
+- Use **Start here** to choose between the read-only demo lead and a real database-backed lead.
+- Paste a Postgres/Supabase `DATABASE_URL` into the setup assistant.
+- Optionally add `OPENAI_API_KEY` for live AI generation.
+- The app validates the database, applies the Prisma schema, creates a sample lead, and opens its workspace.
+- Fill **Product + ICP setup** so LeadForge knows what you sell, who to target, which pains to solve, proof points, and outreach tone.
+- Run **Find leads** with a target market to generate compliant search queries, source boundaries, scored candidate leads, and review-before-save actions.
+- Use **Create sample lead** or **Add your first lead** after setup.
+- Open the saved lead and run: research, website audit, outreach draft, client ops, approval, and outcome logging.
+
 ---
 
 ## 🛡️ Security & Reliability
 - **Zero-Leak Policy**: Integrated `gitleaks` protection.
 - **Deterministic Fallbacks**: Lead actions function via local fallback mode if LLM keys are missing.
+- **Product + ICP Playbook**: Workspace-level product, target customer, pains, proof points, industries, and tone guide agent runs.
+- **Compliant Lead Discovery**: Target-market discovery generates query plans and scored candidates from safe public-source categories. LinkedIn is manual import only.
+- **Quality Gates**: Research, audit, and outreach outputs are scored and stored as evaluations.
+- **Client Ops Prep**: Loom scripts, CRM notes, Airtable payloads, and follow-up reminders are generated before external side effects.
+- **Approval Controls**: Reviewers can approve or reject prepared work while preserving trace history.
+- **Outcome Learning**: Sent, replied, booked, won, and lost outcomes are logged as learning signals.
+- **Agent Analytics**: Dashboard summarizes trace coverage, eval pass rate, latency, and learning signals.
 - **Type-Safe**: 100% TypeScript with Zod schema validation.
 
 ## 🗺️ Roadmap
-- [x] **v1.0 (Current)**: Lead dashboard, Research Agent MVP, Prisma Schema.
-- [ ] **v2.0**: LangGraph Orchestration, Gmail API integration, Slack Notifications.
-- [ ] **v3.0**: CI/CD Eval gates and automated Agent Trace viewer.
+- [x] **v1.0 (Current)**: Lead dashboard, Research Agent MVP, Prisma schema, playbook, and compliant discovery workflow.
+- [ ] **v2.0**: Gmail draft creation, Airtable sync, CRM payloads, follow-up reminders, Loom script generator.
+- [ ] **v3.0**: CI/CD eval gates, analytics, outcome learning, and automated Agent Trace viewer.
 
 ---
 

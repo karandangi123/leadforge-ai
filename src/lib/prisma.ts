@@ -25,3 +25,10 @@ export function getPrisma() {
 
   return globalForPrisma.prisma;
 }
+
+export async function resetPrisma() {
+  if (globalForPrisma.prisma) {
+    await globalForPrisma.prisma.$disconnect();
+    globalForPrisma.prisma = undefined;
+  }
+}

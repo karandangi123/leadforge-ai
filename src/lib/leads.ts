@@ -19,6 +19,65 @@ export type LeadDataState = {
   leads: DashboardLead[];
   status: "connected" | "not_configured" | "unavailable";
   message: string;
+  outcomeSummary: Array<{
+    label: string;
+    value: string;
+    detail: string;
+  }>;
+  agentAnalytics: AgentAnalytics;
+  playbook: WorkspacePlaybookState;
+  discovery: DiscoveryState;
+};
+
+export type WorkspacePlaybookState = {
+  status: "saved" | "demo" | "empty";
+  product: string;
+  idealCustomer: string;
+  industries: string[];
+  pains: string[];
+  proofPoints: string[];
+  tone: string;
+  positioning: string | null;
+};
+
+export type AgentAnalytics = {
+  metrics: Array<{
+    label: string;
+    value: string;
+    detail: string;
+  }>;
+  signals: Array<{
+    label: string;
+    detail: string;
+    tone: "positive" | "warning" | "neutral";
+  }>;
+};
+
+export type DiscoveryState = {
+  status: "saved" | "demo" | "empty";
+  targetMarket: string;
+  summary: string;
+  queryPlan: string[];
+  sourcePolicy: {
+    allowed: string[];
+    blocked: string[];
+    linkedin: string;
+  };
+  candidates: Array<{
+    id: string;
+    company: string;
+    website: string | null;
+    segment: string;
+    sourceType: string;
+    sourceUrl: string | null;
+    evidence: string[];
+    fitScore: number;
+    auditHintScore: number | null;
+    confidence: number | null;
+    reason: string;
+    status: string;
+    savedLeadId: string | null;
+  }>;
 };
 
 export type LeadDetailState = {
@@ -64,6 +123,36 @@ export type LeadDetailState = {
     latencyMs: number | null;
     tokenCount: number | null;
     output: string;
+  }>;
+  evaluations: Array<{
+    id: string;
+    category: string;
+    score: number;
+    passed: boolean;
+    checks: Array<{
+      label: string;
+      passed: boolean;
+      detail: string;
+    }>;
+  }>;
+  integrations: Array<{
+    id: string;
+    provider: string;
+    status: string;
+    payload: string;
+  }>;
+  reminders: Array<{
+    id: string;
+    channel: string;
+    status: string;
+    dueAt: string;
+    note: string;
+  }>;
+  outcomes: Array<{
+    id: string;
+    eventType: string;
+    note: string | null;
+    createdAt: string;
   }>;
 };
 
@@ -150,6 +239,10 @@ export async function getDashboardLeads(): Promise<LeadDataState> {
       leads: seededLeads,
       status: "not_configured",
       message: "Connect DATABASE_URL to save real leads. Showing seeded demo data.",
+      outcomeSummary: seededOutcomeSummary,
+      agentAnalytics: seededAgentAnalytics,
+      playbook: seededPlaybook,
+      discovery: seededDiscovery,
     };
   }
 
@@ -158,6 +251,22 @@ export async function getDashboardLeads(): Promise<LeadDataState> {
     const leads = await prisma.lead.findMany({
       orderBy: { createdAt: "desc" },
       take: 25,
+      include: {
+        agentTraces: true,
+        evaluations: true,
+        outcomeEvents: true,
+      },
+    });
+    const workspace = await prisma.workspace.findUnique({
+      where: { slug: "demo" },
+      include: {
+        playbook: true,
+        discoveryRuns: {
+          orderBy: { createdAt: "desc" },
+          take: 1,
+          include: { candidateLeads: { orderBy: { fitScore: "desc" } } },
+        },
+      },
     });
 
     return {
@@ -177,6 +286,10 @@ export async function getDashboardLeads(): Promise<LeadDataState> {
             }))
           : seededLeads,
       status: "connected",
+      outcomeSummary: leads.length > 0 ? getOutcomeSummary(leads.flatMap((lead) => lead.outcomeEvents)) : seededOutcomeSummary,
+      agentAnalytics: leads.length > 0 ? getAgentAnalytics(leads) : seededAgentAnalytics,
+      playbook: workspace?.playbook ? mapPlaybook(workspace.playbook) : emptyPlaybook,
+      discovery: workspace?.discoveryRuns[0] ? mapDiscovery(workspace.discoveryRuns[0]) : emptyDiscovery,
       message:
         leads.length > 0
           ? "Connected to Postgres. Showing saved leads."
@@ -188,6 +301,10 @@ export async function getDashboardLeads(): Promise<LeadDataState> {
       status: "unavailable",
       message:
         "DATABASE_URL is set, but the app could not reach the database. Showing seeded demo data.",
+      outcomeSummary: seededOutcomeSummary,
+      agentAnalytics: seededAgentAnalytics,
+      playbook: seededPlaybook,
+      discovery: seededDiscovery,
     };
   }
 }
@@ -215,6 +332,10 @@ export async function getLeadDetail(leadId: string): Promise<LeadDetailState | n
         outreachDrafts: { orderBy: { createdAt: "desc" } },
         approvals: { orderBy: { createdAt: "desc" } },
         agentTraces: { orderBy: { createdAt: "desc" } },
+        evaluations: { orderBy: { createdAt: "desc" } },
+        integrationSyncs: { orderBy: { createdAt: "desc" } },
+        followUpReminders: { orderBy: { dueAt: "asc" } },
+        outcomeEvents: { orderBy: { createdAt: "desc" } },
       },
     });
 
@@ -282,6 +403,40 @@ export async function getLeadDetail(leadId: string): Promise<LeadDetailState | n
         latencyMs: trace.latencyMs,
         tokenCount: trace.tokenCount,
         output: JSON.stringify(trace.output, null, 2),
+      })),
+      evaluations: lead.evaluations.map((evaluation) => ({
+        id: evaluation.id,
+        category: evaluation.category,
+        score: evaluation.score,
+        passed: evaluation.passed,
+        checks: readEvaluationChecks(evaluation.report),
+      })),
+      integrations: lead.integrationSyncs.map((sync) => ({
+        id: sync.id,
+        provider: sync.provider,
+        status: sync.status,
+        payload: JSON.stringify(sync.payload, null, 2),
+      })),
+      reminders: lead.followUpReminders.map((reminder) => ({
+        id: reminder.id,
+        channel: reminder.channel,
+        status: reminder.status,
+        dueAt: reminder.dueAt.toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+          year: "numeric",
+        }),
+        note: reminder.note,
+      })),
+      outcomes: lead.outcomeEvents.map((outcome) => ({
+        id: outcome.id,
+        eventType: outcome.eventType,
+        note: outcome.note,
+        createdAt: outcome.createdAt.toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+          year: "numeric",
+        }),
       })),
     };
   } catch {
@@ -414,6 +569,426 @@ function getSeedLeadDetail(leadId: string): LeadDetailState | null {
         output: JSON.stringify({ auditScore: lead.audit, stage: lead.stage }, null, 2),
       },
     ],
+    evaluations: [
+      {
+        id: `${lead.id}-eval-research`,
+        category: "research",
+        score: 100,
+        passed: true,
+        checks: [
+          {
+            label: "Has citations",
+            passed: true,
+            detail: "Seed research includes demo citation context.",
+          },
+          {
+            label: "Actionable angle",
+            passed: true,
+            detail: "The output includes a conversion-focused outreach angle.",
+          },
+        ],
+      },
+      {
+        id: `${lead.id}-eval-outreach`,
+        category: "outreach",
+        score: 75,
+        passed: true,
+        checks: [
+          {
+            label: "Low-pressure tone",
+            passed: true,
+            detail: "The draft avoids urgency and exaggerated claims.",
+          },
+          {
+            label: "Approval reminder",
+            passed: true,
+            detail: "The lead remains in a human review step.",
+          },
+        ],
+      },
+    ],
+    integrations: [
+      {
+        id: `${lead.id}-airtable`,
+        provider: "AIRTABLE",
+        status: "READY",
+        payload: JSON.stringify(
+          {
+            company: lead.company,
+            stage: lead.stage,
+            fitScore: lead.fit,
+            nextAction: lead.next,
+          },
+          null,
+          2,
+        ),
+      },
+      {
+        id: `${lead.id}-crm`,
+        provider: "CRM",
+        status: "READY",
+        payload: JSON.stringify(
+          {
+            company: lead.company,
+            contact: lead.contact,
+            note: "Ready for approved outreach and CRM sync.",
+          },
+          null,
+          2,
+        ),
+      },
+    ],
+    reminders: [
+      {
+        id: `${lead.id}-follow-up`,
+        channel: "EMAIL",
+        status: "SCHEDULED",
+        dueAt: "May 4, 2026",
+        note: "Follow up if the approved Gmail draft has not been sent.",
+      },
+    ],
+    outcomes: [
+      {
+        id: `${lead.id}-outcome-sent`,
+        eventType: "EMAIL_SENT",
+        note: "Approved outreach marked as sent in the seeded demo.",
+        createdAt: "Apr 29, 2026",
+      },
+      {
+        id: `${lead.id}-outcome-reply`,
+        eventType: lead.stage === "Ready" ? "REPLIED" : "MEETING_BOOKED",
+        note: "Outcome signal used to improve future fit scoring and outreach prompts.",
+        createdAt: "Apr 30, 2026",
+      },
+    ],
+  };
+}
+
+const seededOutcomeSummary = [
+  {
+    label: "Reply rate",
+    value: "50%",
+    detail: "Seeded learning signal",
+  },
+  {
+    label: "Meetings",
+    value: "1",
+    detail: "Booked from approved outreach",
+  },
+  {
+    label: "Wins",
+    value: "1",
+    detail: "Positive outcome examples",
+  },
+];
+
+const seededPlaybook: WorkspacePlaybookState = {
+  status: "demo",
+  product: "AI-powered RevOps workflow automation",
+  idealCustomer: "Founder-led B2B teams and agencies that need qualified outreach without losing human review.",
+  industries: ["Healthcare ops", "GovTech SaaS", "Logistics", "B2B AI tooling"],
+  pains: ["Manual lead research", "Weak website conversion", "Inconsistent follow-up", "No outreach quality tracking"],
+  proofPoints: ["Human approval before external actions", "Traceable AI runs", "Quality evals and outcome learning"],
+  tone: "Specific, low-pressure, useful, and concise",
+  positioning: "LeadForge turns a product description into researched leads, website audits, approved outreach, and learning signals.",
+};
+
+const emptyPlaybook: WorkspacePlaybookState = {
+  status: "empty",
+  product: "",
+  idealCustomer: "",
+  industries: [],
+  pains: [],
+  proofPoints: [],
+  tone: "",
+  positioning: null,
+};
+
+const seededDiscovery: DiscoveryState = {
+  status: "demo",
+  targetMarket: "Healthcare operations teams",
+  summary:
+    "Demo discovery shows how LeadForge plans safe sources, scores candidates, and keeps LinkedIn as manual import only.",
+  queryPlan: [
+    "Healthcare operations teams companies case studies",
+    "Healthcare operations software platforms hiring revops operations",
+    "site:github.com/orgs healthcare operations company engineering",
+    "Healthcare operations startup funding news customer operations",
+  ],
+  sourcePolicy: {
+    allowed: [
+      "Company websites",
+      "Search result snippets",
+      "Public directories",
+      "GitHub organizations",
+      "Job posts",
+      "News pages",
+      "Public tech hints",
+    ],
+    blocked: ["Undetectable scraping", "Login-gated scraping", "CAPTCHA bypass", "Stealth LinkedIn automation"],
+    linkedin: "Manual CSV/import only. Do not automate LinkedIn browsing or messaging.",
+  },
+  candidates: [
+    {
+      id: "seed-discovery-candidate-1",
+      company: "CareOps Systems",
+      website: "https://careops.example",
+      segment: "Healthcare ops",
+      sourceType: "company_website",
+      sourceUrl: "https://careops.example",
+      evidence: ["Website category matches healthcare operations.", "Messaging suggests manual qualification pain."],
+      fitScore: 91,
+      auditHintScore: 78,
+      confidence: 0.76,
+      reason: "Strong ICP match with a public company website and clear operations pain.",
+      status: "CANDIDATE",
+      savedLeadId: null,
+    },
+    {
+      id: "seed-discovery-candidate-2",
+      company: "ClinicFlow Labs",
+      website: null,
+      segment: "Healthcare ops",
+      sourceType: "github_org",
+      sourceUrl: "https://github.com/clinicflow-labs",
+      evidence: ["Public GitHub organization suggests an active technical team.", "Repo context can support research only."],
+      fitScore: 86,
+      auditHintScore: null,
+      confidence: 0.72,
+      reason: "Technical team signal and healthcare workflow category overlap.",
+      status: "CANDIDATE",
+      savedLeadId: null,
+    },
+  ],
+};
+
+const emptyDiscovery: DiscoveryState = {
+  status: "empty",
+  targetMarket: "",
+  summary: "",
+  queryPlan: [],
+  sourcePolicy: {
+    allowed: [],
+    blocked: [],
+    linkedin: "Manual import only. No stealth automation.",
+  },
+  candidates: [],
+};
+
+const seededAgentAnalytics: AgentAnalytics = {
+  metrics: [
+    {
+      label: "Trace coverage",
+      value: "100%",
+      detail: "Seeded demo runs are traceable",
+    },
+    {
+      label: "Eval pass rate",
+      value: "88%",
+      detail: "Quality gates passing",
+    },
+    {
+      label: "Avg latency",
+      value: "1.4s",
+      detail: "Agent response timing",
+    },
+    {
+      label: "Learning signals",
+      value: "8",
+      detail: "Outcomes captured",
+    },
+  ],
+  signals: [
+    {
+      label: "Strong fit leads convert better",
+      detail: "Seeded wins skew above 90 fit score.",
+      tone: "positive",
+    },
+    {
+      label: "Audit below 70 needs review",
+      detail: "Lower audit scores should trigger stronger proof and CTA recommendations.",
+      tone: "warning",
+    },
+    {
+      label: "Human approval remains required",
+      detail: "External actions stay blocked until reviewer approval.",
+      tone: "neutral",
+    },
+  ],
+};
+
+function getOutcomeSummary(events: Array<{ eventType: string }>) {
+  const sent = events.filter((event) => event.eventType === "EMAIL_SENT").length;
+  const replies = events.filter((event) => event.eventType === "REPLIED").length;
+  const meetings = events.filter((event) => event.eventType === "MEETING_BOOKED").length;
+  const wins = events.filter((event) => event.eventType === "WON").length;
+
+  return [
+    {
+      label: "Reply rate",
+      value: sent > 0 ? `${Math.round((replies / sent) * 100)}%` : "0%",
+      detail: sent > 0 ? `${replies} replies from ${sent} sent` : "No sent outcomes yet",
+    },
+    {
+      label: "Meetings",
+      value: String(meetings),
+      detail: "Booked meetings logged",
+    },
+    {
+      label: "Wins",
+      value: String(wins),
+      detail: "Won outcomes logged",
+    },
+  ];
+}
+
+function getAgentAnalytics(
+  leads: Array<{
+    fitScore: number | null;
+    auditScore: number | null;
+    agentTraces: Array<{ latencyMs: number | null }>;
+    evaluations: Array<{ passed: boolean; score: number }>;
+    outcomeEvents: Array<{ eventType: string }>;
+  }>,
+): AgentAnalytics {
+  const traces = leads.flatMap((lead) => lead.agentTraces);
+  const evaluations = leads.flatMap((lead) => lead.evaluations);
+  const outcomes = leads.flatMap((lead) => lead.outcomeEvents);
+  const latencies = traces.flatMap((trace) => (trace.latencyMs == null ? [] : [trace.latencyMs]));
+  const passed = evaluations.filter((evaluation) => evaluation.passed).length;
+  const wonLeads = leads.filter((lead) => lead.outcomeEvents.some((event) => event.eventType === "WON"));
+  const wonFitScores = wonLeads.flatMap((lead) => (lead.fitScore == null ? [] : [lead.fitScore]));
+  const lowAuditCount = leads.filter((lead) => lead.auditScore != null && lead.auditScore < 70).length;
+
+  return {
+    metrics: [
+      {
+        label: "Trace coverage",
+        value: `${Math.round((traces.length / Math.max(leads.length, 1)) * 100)}%`,
+        detail: `${traces.length} traces across ${leads.length} leads`,
+      },
+      {
+        label: "Eval pass rate",
+        value: evaluations.length > 0 ? `${Math.round((passed / evaluations.length) * 100)}%` : "0%",
+        detail: evaluations.length > 0 ? `${passed} of ${evaluations.length} passed` : "No evals recorded yet",
+      },
+      {
+        label: "Avg latency",
+        value:
+          latencies.length > 0
+            ? `${(latencies.reduce((sum, latency) => sum + latency, 0) / latencies.length / 1000).toFixed(1)}s`
+            : "-",
+        detail: latencies.length > 0 ? "Agent execution timing" : "No latency data yet",
+      },
+      {
+        label: "Learning signals",
+        value: String(outcomes.length),
+        detail: "Outcome events captured",
+      },
+    ],
+    signals: [
+      {
+        label: wonFitScores.length > 0 ? "Winning fit score" : "No wins logged yet",
+        detail:
+          wonFitScores.length > 0
+            ? `Average won-lead fit is ${Math.round(wonFitScores.reduce((sum, score) => sum + score, 0) / wonFitScores.length)}.`
+            : "Record won outcomes to tune ICP scoring.",
+        tone: wonFitScores.length > 0 ? "positive" : "neutral",
+      },
+      {
+        label: lowAuditCount > 0 ? "Low audit risk" : "Audit quality stable",
+        detail:
+          lowAuditCount > 0
+            ? `${lowAuditCount} leads have audit scores below 70 and may need stronger messaging.`
+            : "No saved leads are currently below the audit risk threshold.",
+        tone: lowAuditCount > 0 ? "warning" : "positive",
+      },
+      {
+        label: "Approval boundary",
+        detail: "Analytics never imply external actions were sent; approvals and syncs remain explicit.",
+        tone: "neutral",
+      },
+    ],
+  };
+}
+
+function mapPlaybook(playbook: {
+  product: string;
+  idealCustomer: string;
+  industries: unknown;
+  pains: unknown;
+  proofPoints: unknown;
+  tone: string;
+  positioning: string | null;
+}): WorkspacePlaybookState {
+  return {
+    status: "saved",
+    product: playbook.product,
+    idealCustomer: playbook.idealCustomer,
+    industries: readStringList(playbook.industries),
+    pains: readStringList(playbook.pains),
+    proofPoints: readStringList(playbook.proofPoints),
+    tone: playbook.tone,
+    positioning: playbook.positioning,
+  };
+}
+
+function mapDiscovery(discovery: {
+  targetMarket: string;
+  summary: string | null;
+  queryPlan: unknown;
+  sourcePolicy: unknown;
+  candidateLeads: Array<{
+    id: string;
+    company: string;
+    website: string | null;
+    segment: string | null;
+    sourceType: string;
+    sourceUrl: string | null;
+    evidence: unknown;
+    fitScore: number;
+    auditHintScore: number | null;
+    confidence: number | null;
+    reason: string;
+    status: string;
+    savedLeadId: string | null;
+  }>;
+}): DiscoveryState {
+  return {
+    status: "saved",
+    targetMarket: discovery.targetMarket,
+    summary: discovery.summary ?? "Discovery run completed.",
+    queryPlan: readStringList(discovery.queryPlan),
+    sourcePolicy: readSourcePolicy(discovery.sourcePolicy),
+    candidates: discovery.candidateLeads.map((candidate) => ({
+      id: candidate.id,
+      company: candidate.company,
+      website: candidate.website,
+      segment: candidate.segment ?? "Unsegmented",
+      sourceType: candidate.sourceType,
+      sourceUrl: candidate.sourceUrl,
+      evidence: readStringList(candidate.evidence),
+      fitScore: candidate.fitScore,
+      auditHintScore: candidate.auditHintScore,
+      confidence: candidate.confidence,
+      reason: candidate.reason,
+      status: candidate.status,
+      savedLeadId: candidate.savedLeadId,
+    })),
+  };
+}
+
+function readSourcePolicy(value: unknown): DiscoveryState["sourcePolicy"] {
+  if (typeof value !== "object" || value === null) {
+    return emptyDiscovery.sourcePolicy;
+  }
+
+  const policy = value as { allowed?: unknown; blocked?: unknown; linkedin?: unknown };
+
+  return {
+    allowed: readStringList(policy.allowed),
+    blocked: readStringList(policy.blocked),
+    linkedin: typeof policy.linkedin === "string" ? policy.linkedin : emptyDiscovery.sourcePolicy.linkedin,
   };
 }
 
@@ -423,4 +998,34 @@ function readStringList(value: unknown): string[] {
   }
 
   return value.flatMap((item) => (typeof item === "string" ? [item] : []));
+}
+
+function readEvaluationChecks(value: unknown): LeadDetailState["evaluations"][number]["checks"] {
+  if (typeof value !== "object" || value === null || !("checks" in value)) {
+    return [];
+  }
+
+  const checks = (value as { checks?: unknown }).checks;
+  if (!Array.isArray(checks)) {
+    return [];
+  }
+
+  return checks.flatMap((check) => {
+    if (typeof check !== "object" || check === null) {
+      return [];
+    }
+
+    const item = check as { label?: unknown; passed?: unknown; detail?: unknown };
+    if (typeof item.label !== "string" || typeof item.passed !== "boolean" || typeof item.detail !== "string") {
+      return [];
+    }
+
+    return [
+      {
+        label: item.label,
+        passed: item.passed,
+        detail: item.detail,
+      },
+    ];
+  });
 }

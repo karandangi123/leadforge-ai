@@ -1,150 +1,192 @@
-# ⚡️ LeadForge AI: Autonomous RevOps Architect
-> **Enterprise-grade AI Command Center for high-scale revenue operations. Modular, traceable, and architected for growth.**
+# LeadForge AI
 
-[![Security: Gitleaks](https://img.shields.io/badge/Security-Gitleaks-brightgreen.svg)](https://github.com/gitleaks/gitleaks)
-[![CI: CodeQL](https://github.com/karandangi123/leadforge-ai/actions/workflows/codeql.yml/badge.svg)](https://github.com/karandangi123/leadforge-ai/actions/workflows/codeql.yml)
-[![Deployment: Vercel](https://deploy-badge.vercel.app/vercel/leadforge-ai-weld)](https://leadforge-ai-weld.vercel.app)
-[![Architecture: Hybrid SPA](https://img.shields.io/badge/Architecture-Hybrid%20SPA-blue.svg)](#architecture)
-[![Interface: On--Demand%20Mobile](https://img.shields.io/badge/Interface-On--Demand%20Mobile-emerald.svg)](#hybrid-navigational-shell)
-[![License: MIT](https://img.shields.io/badge/License-MIT-gray.svg)](LICENSE)
+> Human-in-the-loop AI revenue workflow for discovery, research, website audits, approvals, and founder growth planning.
 
----
+[![CodeQL](https://github.com/karandangi123/leadforge-ai/actions/workflows/codeql.yml/badge.svg)](https://github.com/karandangi123/leadforge-ai/actions/workflows/codeql.yml)
+[![Security: Gitleaks](https://img.shields.io/badge/security-gitleaks-1f9d55)](https://github.com/gitleaks/gitleaks)
+[![License: MIT](https://img.shields.io/badge/license-MIT-6b7280.svg)](LICENSE)
+[![Live App](https://img.shields.io/badge/live-leadforge--ai--weld.vercel.app-176b5d)](https://leadforge-ai-weld.vercel.app)
 
-### 🌐 [Click here to visit the Live Command Center](https://leadforge-ai-weld.vercel.app)
+[Live demo](https://leadforge-ai-weld.vercel.app) • [Quick start](#quick-start) • [Architecture](#architecture) • [Security](#security) • [Roadmap](#roadmap)
 
----
+## What LeadForge AI is
 
-LeadForge AI is not just another lead scraper. It is a **Production-Grade Command Center** designed to orchestrate autonomous research agents, perform deep website audits, and generate human-in-the-loop outreach strategies at scale.
+LeadForge AI is an operator-grade workspace for revenue and growth teams.
 
----
+It combines:
 
-## 🏗️ New: The Modular Command Center
-We have recently overhauled the entire UI/UX to follow a **View-Switcher Architecture**, providing a focused workspace for every stage of the RevOps lifecycle:
+- ICP and offer setup
+- compliant lead discovery
+- lead research and website audits
+- human-reviewed outreach preparation
+- approval queue operations
+- founder-facing growth strategy tools
 
-- **🕹️ Operations Hub**: Central command for monitoring agent performance and real-time ROI.
-- **🧠 Intelligence Playbook**: Define your ICP and train agents with deep product context.
-- **🕵️ Autonomous Discovery**: Let agents hunt for high-intent leads across the web.
-- **📋 Lead Pipeline**: A high-fidelity data grid for inspecting research and approving actions.
-- **🛡️ Security & Evals**: Built-in safeguards to ensure agent alignment and quality.
+The product is built to feel like a real workflow, not a one-shot prompt demo.
 
----
+## What you can do right now
 
-## 🏛️ Hybrid Navigational Shell
-LeadForge AI implements a **Universal Viewport Strategy** to ensure zero operational friction.
-- **Desktop Strategy**: A persistent, high-density navigational sidebar for complex orchestration and audit depth.
-- **Mobile Strategy**: A minimalist, **On-Demand Navigational Dock** toggled via the Brand-Icon, optimized for high-speed approvals and real-time monitoring.
+### Core workspace
 
----
+- Build a product and ICP playbook
+- Save leads manually or by CSV import
+- Move leads through a real pipeline
+- Open a lead workspace with timeline, research, audits, approvals, and outcomes
+- Review prepared work from a centralized approvals queue
 
-## 🛠️ Engineering & Traceability
-- **Foundation**: Next.js 16 (Turbopack) + TypeScript for type-safe agentic logic.
-- **Core Engine**: State-based Modular SPA Architecture.
-- **Data Persistence**: Prisma ORM with deterministic relational mapping.
-- **Security Posture**: Automated secret-redaction (Gitleaks) + CodeQL vulnerability analysis.
+### Growth surfaces
 
----
+- Roast a website
+- Run competitor positioning analysis
+- Generate a one-prompt growth brief
 
-## 🦅 Architected for Growth
-This project is more than a tool; it is a demonstration of **Applied AI Architecture.** Every component is designed for traceability, safety, and operational excellence.
+## Why it is different
 
-**Created by [Karan Dangi](https://linkedin.com/in/karan-dangi-4a672925b)**  
-*Applied AI Engineer & Growth Architect | Data Science @ NIT Bhopal*
+- **Human-in-the-loop by default**: generated work is prepared for review before external actions.
+- **Compliant discovery stance**: manual import or public-source workflows, not gray-area scraping claims.
+- **Product-plus-growth shape**: internal RevOps workflow and public-facing growth tools live in one system.
+- **Demo-ready without faking maturity**: seeded mode works when infra is unavailable, while Prisma-backed mode supports real data.
 
----
+## Product surfaces
 
-## 🏗️ Technical Architecture
+| Surface | Purpose |
+| --- | --- |
+| `Pipeline` | Lead board, stage movement, filters, intake, and health view |
+| `Discovery` | Compliant lead discovery and candidate review |
+| `Playbook` | Product, ICP, pain points, proof, and tone setup |
+| `Approvals` | Centralized review queue for prepared work |
+| `Roast Lab` | Shareable website audit and rewrite experience |
+| `Competitor Spy` | Offer, CTA, and funnel positioning analysis |
+| `Growth Mode` | 90-day growth strategy brief from one prompt |
+
+## Architecture
 
 ```mermaid
 graph TD
-    User((Operator)) -->|Approvals| Dashboard[Next.js 15 Dashboard]
-    Dashboard -->|Server Actions| AgentRunner[AI Agent Runner]
-    AgentRunner -->|Research| WebScraper[Website Auditor]
-    AgentRunner -->|Enrichment| DB[(PostgreSQL / Prisma 7)]
-    AgentRunner -->|Generation| OpenAI[GPT-4o / GPT-5.2]
-    AgentRunner -->|Quality Gates| Evals[Agent Evaluations]
-    AgentRunner -->|Drafts| Outreach[Personalized Generator]
-    Outreach -->|Client Ops| Integrations[Gmail / CRM / Airtable Prep]
-    Outreach -->|Review| User
+    Operator((Operator)) --> App[Next.js 16 App Router]
+    App --> Actions[Server Actions]
+    Actions --> Prisma[Prisma 7]
+    Prisma --> Postgres[(PostgreSQL)]
+    Actions --> Agents[AI Agent Layer]
+    Agents --> Research[Lead Research]
+    Agents --> Audit[Website Audit]
+    Agents --> Outreach[Outreach Prep]
+    Agents --> Strategy[Growth Strategy]
+    Outreach --> Queue[Approval Queue]
+    Queue --> Operator
+    Actions --> Demo[Seeded Demo Mode]
 ```
 
----
+## Stack
 
-## 🚀 Quick Start
+- **Frontend**: Next.js 16, React 19, Tailwind CSS 4
+- **Backend patterns**: App Router + Server Actions
+- **Data**: Prisma 7 + PostgreSQL
+- **Validation**: Zod
+- **Deployment**: Vercel
+- **Security posture**: Gitleaks + CodeQL + protected env handling
 
-### 1. Prerequisites
+## Quick start
+
+### Prerequisites
+
 - Node.js 20+
-- PostgreSQL (Supabase recommended)
+- PostgreSQL or Supabase for database-backed mode
 
-### 2. Installation
+### Install
+
 ```bash
 git clone https://github.com/karandangi123/leadforge-ai.git
 cd leadforge-ai
 npm install
 ```
 
-### 3. Environment Setup
+### Environment
+
 ```bash
 cp .env.example .env
-# Add your DATABASE_URL and OPENAI_API_KEY
+# Set DATABASE_URL
+# Optionally set OPENAI_API_KEY
 ```
 
-For local development only:
-- Keep `.env` on your machine and out of version control.
-- Production and preview secrets should be set in Vercel project environment variables, not stored in repo files.
-- This repo includes `.vercelignore` so local `.env` files are not uploaded during CLI deployments.
+Local-only guidance:
 
-### 4. Database Initialization
+- Keep `.env` on your machine.
+- Do not commit secrets.
+- Hosted deployments should use Vercel environment variables.
+- `.vercelignore` excludes local `.env` files from Vercel CLI uploads.
+
+### Database
+
 ```bash
 npm run db:generate
 npm run db:migrate
 ```
 
-### 5. Launch
+### Run
+
 ```bash
 npm run dev
 ```
-Open [http://localhost:3000](http://localhost:3000) to see the agent dashboard.
 
-### First Run
-- Use **Start here** to choose between the read-only demo lead and a real database-backed lead.
-- Paste a Postgres/Supabase `DATABASE_URL` into the setup assistant.
-- Optionally add `OPENAI_API_KEY` for live AI generation.
-- The app validates the database, applies the Prisma schema, creates a sample lead, and opens its workspace.
-- Fill **Product + ICP setup** so LeadForge knows what you sell, who to target, which pains to solve, proof points, and outreach tone.
-- Run **Find leads** with a target market to generate compliant search queries, source boundaries, scored candidate leads, and review-before-save actions.
-- Use **Create sample lead** or **Add your first lead** after setup.
-- Open the saved lead and run: research, website audit, outreach draft, client ops, approval, and outcome logging.
+Open [http://localhost:3000](http://localhost:3000).
 
----
+## First-run flow
 
-## 🛡️ Security & Reliability
-- **Zero-Leak Policy**: Integrated `gitleaks` protection.
-- **Deployment Secret Guardrails**: Local `.env` files are excluded from Vercel CLI uploads; use Vercel-managed environment variables for hosted deployments.
-- **Deterministic Fallbacks**: Lead actions function via local fallback mode if LLM keys are missing.
-- **Product + ICP Playbook**: Workspace-level product, target customer, pains, proof points, industries, and tone guide agent runs.
-- **Compliant Lead Discovery**: Target-market discovery generates query plans and scored candidates from safe public-source categories. LinkedIn is manual import only.
-- **Quality Gates**: Research, audit, and outreach outputs are scored and stored as evaluations.
-- **Client Ops Prep**: Loom scripts, CRM notes, Airtable payloads, and follow-up reminders are generated before external side effects.
-- **Approval Controls**: Reviewers can approve or reject prepared work while preserving trace history.
-- **Outcome Learning**: Sent, replied, booked, won, and lost outcomes are logged as learning signals.
-- **Agent Analytics**: Dashboard summarizes trace coverage, eval pass rate, latency, and learning signals.
-- **Type-Safe**: 100% TypeScript with Zod schema validation.
+1. Open the app in demo mode or connect a database.
+2. Fill the Product + ICP playbook.
+3. Add or import leads.
+4. Run research and audit passes.
+5. Generate drafts or client ops prep.
+6. Review work in the approvals queue.
+7. Track outcomes and refine the workflow.
 
-## 🗺️ Roadmap
-- [x] **v1.0 (Current)**: Lead dashboard, Research Agent MVP, Prisma schema, playbook, and compliant discovery workflow.
-- [ ] **v2.0**: Gmail draft creation, Airtable sync, CRM payloads, follow-up reminders, Loom script generator.
-- [ ] **v3.0**: CI/CD eval gates, analytics, outcome learning, and automated Agent Trace viewer.
+## Security
 
----
+- Gitleaks-backed secret scanning in the workflow
+- CodeQL for static analysis
+- `.env` ignored in Git and excluded from Vercel CLI uploads
+- Human approval boundary before outbound or integration-style actions
+- No fake claims of automated LinkedIn sending or unsafe scraping workflows
 
-## 📄 License
-Distributed under the MIT License. See `LICENSE` for more information.
+See [SECURITY.md](SECURITY.md) for reporting guidance.
 
-<p align="center">
-  <b>Built for Scale, Built for Speed.</b><br>
-  <i>By Karan Dangi (@karandangi123)</i>
-</p>
+## Repository standards
 
----
-### 📫 Connect with Me
+This repository is being shaped as a production-grade public project:
+
+- clear README and quick start
+- contributing guide
+- security policy
+- issue templates
+- PR template
+- conventional commits
+- Vercel deployment
+
+## Roadmap
+
+- [x] Pipeline board and lead workspace
+- [x] Approval queue
+- [x] CSV import with duplicate handling
+- [x] Roast Lab
+- [x] Competitor Spy
+- [x] One Prompt Growth Mode
+- [ ] Founder Content Engine
+- [ ] Proposal generator
+- [ ] CRM and provider adapters behind approval
+- [ ] richer evaluations and trace analytics
+
+## Contributing
+
+Open an issue for bugs, ideas, or workflow feedback. Small, focused PRs are preferred. See [CONTRIBUTING.md](CONTRIBUTING.md).
+
+## License
+
+MIT. See [LICENSE](LICENSE).
+
+## Built by
+
+**Karan Dangi**  
+Applied AI engineer focused on agentic systems, growth workflows, and founder-grade product execution.
+
 [LinkedIn](https://www.linkedin.com/in/karan-dangi-4a672925b)

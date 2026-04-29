@@ -56,15 +56,32 @@ enum EvalStatus {
 }
 
 model Workspace {
-  id             String          @id @default(cuid())
+  id             String             @id @default(cuid())
   name           String
-  slug           String          @unique
+  slug           String             @unique
   users          User[]
   leads          Lead[]
+  playbook       WorkspacePlaybook?
+  discoveryRuns  DiscoveryRun[]
   promptVersions PromptVersion[]
   evalRuns       EvalRun[]
-  createdAt      DateTime        @default(now())
-  updatedAt      DateTime        @updatedAt
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+}
+
+model WorkspacePlaybook {
+  id            String    @id @default(cuid())
+  workspaceId   String    @unique
+  workspace     Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  product       String
+  idealCustomer String
+  industries    Json      @default("[]")
+  pains         Json      @default("[]")
+  proofPoints   Json      @default("[]")
+  tone          String
+  positioning   String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 }
 
 model User {
@@ -82,29 +99,72 @@ model User {
 }
 
 model Lead {
-  id              String           @id @default(cuid())
-  workspaceId     String
-  workspace       Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  company         String
-  website         String?
-  contactName     String?
-  contactEmail    String?
-  segment         String?
-  source          String           @default("manual")
-  status          LeadStatus       @default(NEW)
-  fitScore        Int?
-  auditScore      Int?
-  nextAction      String           @default("Start research")
-  researchRuns    ResearchRun[]
-  websiteAudits   WebsiteAudit[]
-  outreachDrafts  OutreachDraft[]
-  approvals       Approval[]
-  agentTraces     AgentTrace[]
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
+  id                String             @id @default(cuid())
+  workspaceId       String
+  workspace         Workspace          @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  company           String
+  website           String?
+  contactName       String?
+  contactEmail      String?
+  segment           String?
+  source            String             @default("manual")
+  status            LeadStatus         @default(NEW)
+  fitScore          Int?
+  auditScore        Int?
+  nextAction        String             @default("Start research")
+  researchRuns      ResearchRun[]
+  websiteAudits     WebsiteAudit[]
+  outreachDrafts    OutreachDraft[]
+  approvals         Approval[]
+  agentTraces       AgentTrace[]
+  evaluations       AgentEvaluation[]
+  integrationSyncs  IntegrationSync[]
+  followUpReminders FollowUpReminder[]
+  outcomeEvents     OutcomeEvent[]
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
 
   @@index([workspaceId, status])
   @@index([workspaceId, company])
+}
+
+model DiscoveryRun {
+  id             String          @id @default(cuid())
+  workspaceId    String
+  workspace      Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  targetMarket   String
+  status         AgentRunStatus  @default(SUCCEEDED)
+  queryPlan      Json            @default("[]")
+  sourcePolicy   Json            @default("{}")
+  summary        String?
+  candidateLeads CandidateLead[]
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  @@index([workspaceId, createdAt])
+}
+
+model CandidateLead {
+  id             String       @id @default(cuid())
+  discoveryRunId String
+  discoveryRun   DiscoveryRun @relation(fields: [discoveryRunId], references: [id], onDelete: Cascade)
+  company        String
+  website        String?
+  segment        String?
+  sourceType     String
+  sourceUrl      String?
+  evidence       Json         @default("[]")
+  fitScore       Int
+  auditHintScore Int?
+  confidence     Float?
+  reason         String
+  status         String       @default("CANDIDATE")
+  savedLeadId    String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@index([discoveryRunId, fitScore])
+  @@index([status, createdAt])
 }
 
 model ResearchRun {
@@ -172,23 +232,85 @@ model Approval {
 }
 
 model AgentTrace {
-  id           String         @id @default(cuid())
+  id           String            @id @default(cuid())
   leadId       String?
-  lead         Lead?          @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  lead         Lead?             @relation(fields: [leadId], references: [id], onDelete: SetNull)
   agentName    String
-  status       AgentRunStatus @default(QUEUED)
+  status       AgentRunStatus    @default(QUEUED)
   model        String?
-  input        Json           @default("{}")
-  output       Json           @default("{}")
-  toolCalls    Json           @default("[]")
+  input        Json              @default("{}")
+  output       Json              @default("{}")
+  toolCalls    Json              @default("[]")
   tokenCount   Int?
   costCents    Int?
   latencyMs    Int?
   errorMessage String?
-  createdAt    DateTime       @default(now())
+  createdAt    DateTime          @default(now())
+  evaluations  AgentEvaluation[]
 
   @@index([leadId, createdAt])
   @@index([agentName, createdAt])
+}
+
+model AgentEvaluation {
+  id           String      @id @default(cuid())
+  leadId       String
+  lead         Lead        @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  agentTraceId String?
+  agentTrace   AgentTrace? @relation(fields: [agentTraceId], references: [id], onDelete: SetNull)
+  category     String
+  score        Int
+  passed       Boolean
+  report       Json        @default("{}")
+  createdAt    DateTime    @default(now())
+
+  @@index([leadId, createdAt])
+  @@index([category, passed])
+}
+
+model IntegrationSync {
+  id         String   @id @default(cuid())
+  leadId     String
+  lead       Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  provider   String
+  status     String   @default("READY")
+  payload    Json     @default("{}")
+  externalId String?
+  lastError  String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([leadId, provider])
+  @@index([provider, status])
+}
+
+model FollowUpReminder {
+  id        String   @id @default(cuid())
+  leadId    String
+  lead      Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  dueAt     DateTime
+  channel   String   @default("EMAIL")
+  status    String   @default("SCHEDULED")
+  note      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([leadId, dueAt])
+  @@index([status, dueAt])
+}
+
+model OutcomeEvent {
+  id        String   @id @default(cuid())
+  leadId    String
+  lead      Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  eventType String
+  note      String?
+  source    String   @default("manual")
+  metadata  Json     @default("{}")
+  createdAt DateTime @default(now())
+
+  @@index([leadId, createdAt])
+  @@index([eventType, createdAt])
 }
 
 model PromptVersion {
@@ -211,11 +333,11 @@ model EvalRun {
   workspaceId String
   workspace   Workspace  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   name        String
-  status      EvalStatus  @default(QUEUED)
+  status      EvalStatus @default(QUEUED)
   score       Float?
   dataset     String
-  report      Json        @default("{}")
-  createdAt   DateTime    @default(now())
+  report      Json       @default("{}")
+  createdAt   DateTime   @default(now())
   completedAt DateTime?
 
   @@index([workspaceId, createdAt])

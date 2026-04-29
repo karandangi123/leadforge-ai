@@ -38,6 +38,19 @@ export type OutreachOutput = {
   nextAction: string;
 };
 
+export type ClientOpsOutput = {
+  loomScript: string;
+  crmNote: string;
+  airtableFields: {
+    company: string;
+    stage: string;
+    fitScore: number;
+    nextAction: string;
+  };
+  followUpReminder: string;
+  nextAction: string;
+};
+
 type LeadAgentInput = {
   company: string;
   website: string | null;
@@ -45,6 +58,15 @@ type LeadAgentInput = {
   contactEmail: string | null;
   segment: string | null;
   source: string;
+  playbook?: {
+    product: string;
+    idealCustomer: string;
+    industries: string[];
+    pains: string[];
+    proofPoints: string[];
+    tone: string;
+    positioning: string | null;
+  } | null;
 };
 
 const researchSchema = {
@@ -108,6 +130,29 @@ const outreachSchema = {
   },
 };
 
+const clientOpsSchema = {
+  type: "object",
+  additionalProperties: false,
+  required: ["loomScript", "crmNote", "airtableFields", "followUpReminder", "nextAction"],
+  properties: {
+    loomScript: { type: "string" },
+    crmNote: { type: "string" },
+    airtableFields: {
+      type: "object",
+      additionalProperties: false,
+      required: ["company", "stage", "fitScore", "nextAction"],
+      properties: {
+        company: { type: "string" },
+        stage: { type: "string" },
+        fitScore: { type: "integer", minimum: 0, maximum: 100 },
+        nextAction: { type: "string" },
+      },
+    },
+    followUpReminder: { type: "string" },
+    nextAction: { type: "string" },
+  },
+};
+
 export async function researchLead(input: LeadAgentInput): Promise<AgentResult<LeadResearchOutput>> {
   return callAgent({
     schemaName: "lead_research",
@@ -117,12 +162,14 @@ export async function researchLead(input: LeadAgentInput): Promise<AgentResult<L
     fallback: () => ({
       summary: `${input.company} is a plausible fit for targeted RevOps outreach. The strongest opening is a specific observation about conversion clarity, trust proof, and follow-up discipline.`,
       confidence: 0.82,
-      fitScore: input.website ? 84 : 72,
+      fitScore: input.playbook?.industries.some((industry) => industry.toLowerCase() === (input.segment ?? "").toLowerCase())
+        ? 90
+        : input.website ? 84 : 72,
       citations: [input.website ?? "Manual lead intake", "Lead profile fields"],
       signals: {
         segment: input.segment ?? "Unsegmented",
-        painPoint: "Visitors need a clearer path from interest to qualified next step.",
-        recommendedAngle: "Offer a concise website conversion and follow-up audit.",
+        painPoint: input.playbook?.pains[0] ?? "Visitors need a clearer path from interest to qualified next step.",
+        recommendedAngle: input.playbook?.positioning ?? "Offer a concise website conversion and follow-up audit.",
       },
       nextAction: "Run website audit",
     }),
@@ -165,8 +212,29 @@ export async function draftOutreach(input: LeadAgentInput): Promise<AgentResult<
       channel: "EMAIL",
       subject: `Quick idea for ${input.company}`,
       body: `Hi ${input.contactName ?? "there"},\n\nI noticed ${input.company}${input.website ? " has a clear website presence" : ""}, and there may be a practical opportunity to improve how high-intent visitors move from interest to next step.\n\nI put together a short angle around conversion clarity, trust proof, and follow-up quality. Worth sending over?`,
-      approvalNotes: "Reviewer should confirm all facts before any Gmail draft or CRM sync.",
+      approvalNotes: `Reviewer should confirm all facts before any Gmail draft or CRM sync. Tone target: ${input.playbook?.tone ?? "specific and low-pressure"}.`,
       nextAction: "Review and approve outreach",
+    }),
+  });
+}
+
+export async function prepareClientOps(input: LeadAgentInput): Promise<AgentResult<ClientOpsOutput>> {
+  return callAgent({
+    schemaName: "client_ops_plan",
+    instructions: prompts.clientOps,
+    schema: clientOpsSchema,
+    input,
+    fallback: () => ({
+      loomScript: `Hi ${input.contactName ?? "there"}, this is a quick walkthrough for ${input.company}.\n\n1. Start with the strongest conversion opportunity on the website.\n2. Show where trust proof or CTA clarity could improve the visitor path.\n3. Close with one low-pressure next step: offer to send the short audit notes.`,
+      crmNote: `${input.company} is ready for human-reviewed outreach. Angle: ${input.playbook?.positioning ?? "conversion clarity, trust proof, and disciplined follow-up"}. Confirm facts before syncing external systems.`,
+      airtableFields: {
+        company: input.company,
+        stage: "Ready",
+        fitScore: input.website ? 84 : 72,
+        nextAction: "Approve Gmail draft and sync CRM",
+      },
+      followUpReminder: "Follow up in 3 business days if the approved Gmail draft is not sent.",
+      nextAction: "Approve Gmail draft and sync CRM",
     }),
   });
 }
@@ -291,4 +359,6 @@ const prompts = {
     "You audit B2B websites for clarity, conversion readiness, trust, speed signals, SEO basics, and outreach relevance. Score each category from 0 to 100 and explain the top three improvement opportunities in plain language.",
   outreach:
     "You write respectful, specific, low-pressure outreach. Use only verified research facts. Avoid hype, fake familiarity, and manipulative urgency. Produce one short email draft suitable for human approval.",
+  clientOps:
+    "You prepare post-approval sales operations assets for a B2B lead. Produce a short Loom script, a CRM note, Airtable-ready fields, a concise follow-up reminder, and the next human approval action. Do not claim that any external system was updated.",
 };

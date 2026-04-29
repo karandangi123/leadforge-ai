@@ -1,9 +1,12 @@
 import {
   ArrowLeft,
   Bot,
+  CalendarClock,
+  CalendarCheck,
   ChevronRight,
   CheckCircle2,
   ClipboardCheck,
+  DatabaseZap,
   ExternalLink,
   FileText,
   Gauge,
@@ -11,13 +14,26 @@ import {
   MessageSquareText,
   MousePointerClick,
   Search,
+  Send,
   ShieldCheck,
   Sparkles,
+  TestTube2,
+  Trophy,
+  Video,
+  XCircle,
 } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-import { generateOutreachDraft, runResearch, runWebsiteAudit } from "@/app/actions";
+import {
+  approveLeadWork,
+  generateOutreachDraft,
+  prepareClientOperations,
+  recordLeadOutcome,
+  rejectLeadWork,
+  runResearch,
+  runWebsiteAudit,
+} from "@/app/actions";
 import { getLeadDetail } from "@/lib/leads";
 
 export const dynamic = "force-dynamic";
@@ -39,6 +55,9 @@ export default async function LeadDetailPage({
 
   const { lead } = detail;
   const actionsDisabled = detail.status !== "connected" || Boolean(lead.isSeed);
+  const disabledReason = lead.isSeed
+    ? "Demo leads are read-only. Create a real lead from the dashboard to run this step."
+    : "Connect Postgres and run migrations before executing this step.";
   const notice = getRunNotice(run);
   const aiMode = process.env.OPENAI_API_KEY ? "Live OpenAI" : "Local fallback";
 
@@ -96,7 +115,7 @@ export default async function LeadDetailPage({
               <Bot size={14} /> {aiMode}
             </span>
           </div>
-          <div className="grid gap-px bg-[#e3dccd] lg:grid-cols-[1fr_1fr_1fr]">
+          <div className="grid gap-px bg-[#e3dccd] md:grid-cols-2 xl:grid-cols-4">
             <ActionForm
               action={runResearch}
               leadId={lead.id}
@@ -105,6 +124,7 @@ export default async function LeadDetailPage({
               title="Run Research"
               description="Create company research, citations, ICP signals, and a trace."
               disabled={actionsDisabled}
+              disabledReason={disabledReason}
             />
             <ActionForm
               action={runWebsiteAudit}
@@ -114,6 +134,7 @@ export default async function LeadDetailPage({
               title="Run Website Audit"
               description="Score conversion, clarity, trust, SEO, speed, and findings."
               disabled={actionsDisabled}
+              disabledReason={disabledReason}
             />
             <ActionForm
               action={generateOutreachDraft}
@@ -123,12 +144,27 @@ export default async function LeadDetailPage({
               title="Generate Outreach Draft"
               description="Create an email draft, approval item, and outreach trace."
               disabled={actionsDisabled}
+              disabledReason={disabledReason}
+            />
+            <ActionForm
+              action={prepareClientOperations}
+              leadId={lead.id}
+              icon={DatabaseZap}
+              step="04"
+              title="Prepare Client Ops"
+              description="Create Loom script, CRM note, Airtable payload, and follow-up."
+              disabled={actionsDisabled}
+              disabledReason={disabledReason}
             />
           </div>
           {actionsDisabled ? (
-            <p className="border-t border-[#e3dccd] bg-[#fbfaf7] px-5 py-3 text-sm font-medium text-[#687169]">
-              Connect a real Postgres database and open a saved lead to run actions. Seeded demo leads are read-only.
-            </p>
+            <div className="border-t border-[#e3dccd] bg-[#fbfaf7] px-5 py-3 text-sm font-medium text-[#687169]">
+              <p className="font-black text-[#1e2521]">Why buttons are unavailable</p>
+              <p className="mt-1">{disabledReason}</p>
+              <Link href="/#start" className="mt-2 inline-flex items-center gap-2 font-black text-[#176b5d]">
+                Go to Start here <ChevronRight size={15} />
+              </Link>
+            </div>
           ) : null}
         </div>
       </section>
@@ -218,11 +254,179 @@ export default async function LeadDetailPage({
                 <div key={approval.id} className="rounded-md border border-[#e3dccd] bg-white p-4">
                   <StatusLine label={approval.status} meta={approval.requestedAction} />
                   <p className="mt-3 leading-7 text-[#4f5a53]">{approval.notes ?? "No reviewer notes yet."}</p>
+                  {approval.status === "PENDING" ? (
+                    <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                      <ReviewForm
+                        action={approveLeadWork}
+                        leadId={lead.id}
+                        approvalId={approval.id}
+                        label="Approve work"
+                        icon={CheckCircle2}
+                        disabled={actionsDisabled}
+                      />
+                      <ReviewForm
+                        action={rejectLeadWork}
+                        leadId={lead.id}
+                        approvalId={approval.id}
+                        label="Reject"
+                        icon={XCircle}
+                        disabled={actionsDisabled}
+                        variant="danger"
+                      />
+                    </div>
+                  ) : null}
                 </div>
               ))}
             </div>
           ) : (
             <EmptyState text="No approvals yet. Any Gmail, CRM, Slack, or webhook action should create one." />
+          )}
+        </Panel>
+
+        <section className="rounded-lg border border-[#d2cab7] bg-[#fffdf8] lg:col-span-2">
+          <div className="flex items-start gap-3 border-b border-[#e3dccd] p-5">
+            <DatabaseZap className="mt-1 text-[#176b5d]" size={22} />
+            <div>
+              <h2 className="text-xl font-black">Client Operations</h2>
+              <p className="mt-1 text-sm text-[#687169]">
+                Gmail-ready assets, CRM/Airtable payloads, and follow-up reminders prepared for approval.
+              </p>
+            </div>
+          </div>
+          <div className="grid gap-px bg-[#eee8db] lg:grid-cols-[1fr_1fr]">
+            <div className="bg-[#fffdf8] p-5">
+              <div className="mb-4 flex items-center gap-2">
+                <DatabaseZap size={18} className="text-[#176b5d]" />
+                <h3 className="font-black">Sync payloads</h3>
+              </div>
+              {detail.integrations.length > 0 ? (
+                <div className="space-y-3">
+                  {detail.integrations.map((sync) => (
+                    <article key={sync.id} className="rounded-md border border-[#e3dccd] bg-white p-4">
+                      <StatusLine label={sync.status} meta={sync.provider} />
+                      <pre className="mt-3 max-h-56 overflow-auto rounded-md bg-[#1e2521] p-3 text-xs leading-6 text-[#eaf4ef]">
+                        {sync.payload}
+                      </pre>
+                    </article>
+                  ))}
+                </div>
+              ) : (
+                <EmptyState text="No CRM or Airtable payloads yet. Prepare Client Ops after outreach drafting." />
+              )}
+            </div>
+            <div className="bg-[#fffdf8] p-5">
+              <div className="mb-4 flex items-center gap-2">
+                <CalendarClock size={18} className="text-[#176b5d]" />
+                <h3 className="font-black">Follow-up reminders</h3>
+              </div>
+              {detail.reminders.length > 0 ? (
+                <div className="space-y-3">
+                  {detail.reminders.map((reminder) => (
+                    <article key={reminder.id} className="rounded-md border border-[#e3dccd] bg-white p-4">
+                      <StatusLine label={reminder.status} meta={`${reminder.channel} due ${reminder.dueAt}`} />
+                      <p className="mt-3 leading-7 text-[#4f5a53]">{reminder.note}</p>
+                    </article>
+                  ))}
+                </div>
+              ) : (
+                <EmptyState text="No reminders yet. Client Ops creates one so follow-up does not depend on memory." />
+              )}
+              <div className="mt-5 rounded-md border border-[#d7eee6] bg-[#f3faf7] p-4">
+                <div className="flex items-center gap-2">
+                  <Video size={18} className="text-[#176b5d]" />
+                  <p className="font-black">Loom script status</p>
+                </div>
+                <p className="mt-2 text-sm leading-6 text-[#4f5a53]">
+                  Loom scripts are stored as outreach drafts with the LOOM SCRIPT channel for reviewer approval.
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="rounded-lg border border-[#d2cab7] bg-[#fffdf8] lg:col-span-2">
+          <div className="flex items-start gap-3 border-b border-[#e3dccd] p-5">
+            <Trophy className="mt-1 text-[#176b5d]" size={22} />
+            <div>
+              <h2 className="text-xl font-black">Outcome Learning</h2>
+              <p className="mt-1 text-sm text-[#687169]">
+                Record what happened after approval so future scoring, prompts, and playbooks can improve.
+              </p>
+            </div>
+          </div>
+          <div className="grid gap-px bg-[#eee8db] xl:grid-cols-[0.9fr_1.1fr]">
+            <div className="bg-[#fffdf8] p-5">
+              <h3 className="font-black">Record outcome</h3>
+              <p className="mt-2 text-sm leading-6 text-[#687169]">
+                These buttons only log internal learning signals. They do not send email or sync external tools.
+              </p>
+              <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                <OutcomeForm eventType="EMAIL_SENT" label="Email sent" icon={Send} leadId={lead.id} disabled={actionsDisabled} />
+                <OutcomeForm eventType="REPLIED" label="Replied" icon={MessageSquareText} leadId={lead.id} disabled={actionsDisabled} />
+                <OutcomeForm eventType="MEETING_BOOKED" label="Meeting booked" icon={CalendarCheck} leadId={lead.id} disabled={actionsDisabled} />
+                <OutcomeForm eventType="WON" label="Won" icon={Trophy} leadId={lead.id} disabled={actionsDisabled} />
+                <OutcomeForm eventType="LOST" label="Lost" icon={XCircle} leadId={lead.id} disabled={actionsDisabled} variant="danger" />
+              </div>
+            </div>
+            <div className="bg-[#fffdf8] p-5">
+              <h3 className="font-black">Outcome history</h3>
+              {detail.outcomes.length > 0 ? (
+                <div className="mt-4 space-y-3">
+                  {detail.outcomes.map((outcome) => (
+                    <article key={outcome.id} className="rounded-md border border-[#e3dccd] bg-white p-4">
+                      <StatusLine label={outcome.eventType.replace("_", " ")} meta={outcome.createdAt} />
+                      <p className="mt-3 leading-7 text-[#4f5a53]">
+                        {outcome.note ?? "Outcome logged for future learning."}
+                      </p>
+                    </article>
+                  ))}
+                </div>
+              ) : (
+                <div className="mt-4">
+                  <EmptyState text="No outcomes logged yet. Start after approved outreach is sent or a reply arrives." />
+                </div>
+              )}
+            </div>
+          </div>
+        </section>
+
+        <Panel icon={TestTube2} title="Quality Evals" subtitle="Automated checks for AI output quality and safety">
+          {detail.evaluations.length > 0 ? (
+            <div className="space-y-4">
+              {detail.evaluations.map((evaluation) => (
+                <article key={evaluation.id} className="rounded-md border border-[#e3dccd] bg-white p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <p className="text-xs font-black uppercase text-[#176b5d]">
+                        {evaluation.category.replace("_", " ")}
+                      </p>
+                      <p className="mt-1 text-sm text-[#687169]">
+                        {evaluation.passed ? "Passed quality gate" : "Needs review"}
+                      </p>
+                    </div>
+                    <div className="flex size-14 items-center justify-center rounded-md bg-[#eaf4ef] text-xl font-black text-[#176b5d]">
+                      {evaluation.score}
+                    </div>
+                  </div>
+                  <div className="mt-4 space-y-2">
+                    {evaluation.checks.map((check) => (
+                      <div key={check.label} className="flex gap-2 text-sm leading-6 text-[#4f5a53]">
+                        <CheckCircle2
+                          className={`mt-1 shrink-0 ${check.passed ? "text-[#176b5d]" : "text-[#9a6a2f]"}`}
+                          size={15}
+                        />
+                        <div>
+                          <p className="font-black text-[#1e2521]">{check.label}</p>
+                          <p>{check.detail}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </article>
+              ))}
+            </div>
+          ) : (
+            <EmptyState text="No evaluations yet. Running an agent action will score the output before review." />
           )}
         </Panel>
 
@@ -290,6 +494,7 @@ function ActionForm({
   title,
   description,
   disabled,
+  disabledReason,
 }: {
   action: (formData: FormData) => Promise<void>;
   leadId: string;
@@ -298,6 +503,7 @@ function ActionForm({
   title: string;
   description: string;
   disabled: boolean;
+  disabledReason: string;
 }) {
   return (
     <form
@@ -329,8 +535,83 @@ function ActionForm({
             <MousePointerClick size={17} />
             {disabled ? "Unavailable" : "Run step"}
           </button>
+          {disabled ? <p className="mt-2 text-xs leading-5 text-[#687169]">{disabledReason}</p> : null}
         </div>
       </div>
+    </form>
+  );
+}
+
+function ReviewForm({
+  action,
+  leadId,
+  approvalId,
+  label,
+  icon: Icon,
+  disabled,
+  variant = "primary",
+}: {
+  action: (formData: FormData) => Promise<void>;
+  leadId: string;
+  approvalId: string;
+  label: string;
+  icon: typeof FileText;
+  disabled: boolean;
+  variant?: "primary" | "danger";
+}) {
+  const classes =
+    variant === "danger"
+      ? "border-[#ead7c3] bg-[#fff8ef] text-[#8a4c19] hover:bg-[#fff2dd] focus:ring-[#e1b67b]"
+      : "border-[#b9ddcf] bg-[#176b5d] text-white hover:bg-[#115247] focus:ring-[#9fcfbe]";
+
+  return (
+    <form action={action}>
+      <input type="hidden" name="leadId" value={leadId} />
+      <input type="hidden" name="approvalId" value={approvalId} />
+      <button
+        type="submit"
+        disabled={disabled}
+        className={`inline-flex h-11 w-full items-center justify-center gap-2 rounded-md border px-4 text-sm font-black transition hover:-translate-y-0.5 focus:outline-none focus:ring-4 disabled:cursor-not-allowed disabled:border-[#d2cab7] disabled:bg-[#f1eee5] disabled:text-[#687169] ${classes}`}
+      >
+        <Icon size={17} />
+        {disabled ? "Unavailable" : label}
+      </button>
+    </form>
+  );
+}
+
+function OutcomeForm({
+  eventType,
+  label,
+  icon: Icon,
+  leadId,
+  disabled,
+  variant = "primary",
+}: {
+  eventType: string;
+  label: string;
+  icon: typeof FileText;
+  leadId: string;
+  disabled: boolean;
+  variant?: "primary" | "danger";
+}) {
+  const classes =
+    variant === "danger"
+      ? "border-[#ead7c3] bg-[#fff8ef] text-[#8a4c19] hover:bg-[#fff2dd] focus:ring-[#e1b67b]"
+      : "border-[#b9ddcf] bg-white text-[#176b5d] hover:bg-[#f3faf7] focus:ring-[#9fcfbe]";
+
+  return (
+    <form action={recordLeadOutcome}>
+      <input type="hidden" name="leadId" value={leadId} />
+      <input type="hidden" name="eventType" value={eventType} />
+      <button
+        type="submit"
+        disabled={disabled}
+        className={`inline-flex h-11 w-full items-center justify-center gap-2 rounded-md border px-3 text-sm font-black transition hover:-translate-y-0.5 focus:outline-none focus:ring-4 disabled:cursor-not-allowed disabled:border-[#d2cab7] disabled:bg-[#f1eee5] disabled:text-[#687169] ${classes}`}
+      >
+        <Icon size={17} />
+        {disabled ? "Unavailable" : label}
+      </button>
     </form>
   );
 }
@@ -429,6 +710,34 @@ function getRunNotice(status?: string) {
 
   if (status === "draft") {
     return "Outreach draft and approval request created.";
+  }
+
+  if (status === "client-ops") {
+    return "Client operations assets created: Loom script, CRM note, sync payloads, and follow-up reminder.";
+  }
+
+  if (status === "approve") {
+    return "Reviewer approved the work. Sync payloads are marked approved and ready for external execution.";
+  }
+
+  if (status === "reject") {
+    return "Reviewer rejected the work. The lead is ready for revision.";
+  }
+
+  if (status === "outcome") {
+    return "Outcome logged. LeadForge can now use that signal for future scoring and prompt improvement.";
+  }
+
+  if (status === "invalid") {
+    return "That action was invalid, so no change was saved.";
+  }
+
+  if (status === "sample") {
+    return "Sample lead created. You can now run the workflow buttons on this saved lead.";
+  }
+
+  if (status === "setup-complete") {
+    return "Setup complete. Database schema is ready and this sample lead is saved.";
   }
 
   if (status === "db-not-configured") {

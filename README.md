@@ -53,7 +53,7 @@ This project is more than a tool; it is a demonstration of **Applied AI Architec
 
 ## 🏗️ Technical Architecture
 
-```mermaid
+mermaid
 graph TD
     User((Operator)) -->|Approvals| Dashboard[Next.js 15 Dashboard]
     Dashboard -->|Server Actions| AgentRunner[AI Agent Runner]
@@ -64,7 +64,7 @@ graph TD
     AgentRunner -->|Drafts| Outreach[Personalized Generator]
     Outreach -->|Client Ops| Integrations[Gmail / CRM / Airtable Prep]
     Outreach -->|Review| User
-```
+
 
 ---
 
@@ -75,28 +75,28 @@ graph TD
 - PostgreSQL (Supabase recommended)
 
 ### 2. Installation
-```bash
+
 git clone https://github.com/karandangi123/leadforge-ai.git
 cd leadforge-ai
 npm install
-```
+
 
 ### 3. Environment Setup
-```bash
+
 cp .env.example .env
 # Add your DATABASE_URL and OPENAI_API_KEY
-```
+
 
 ### 4. Database Initialization
-```bash
+
 npm run db:generate
 npm run db:migrate
-```
+
 
 ### 5. Launch
-```bash
+
 npm run dev
-```
+
 Open [http://localhost:3000](http://localhost:3000) to see the agent dashboard.
 
 ### First Run

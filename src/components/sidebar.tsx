@@ -13,7 +13,7 @@ import {
   Sparkles
 } from "lucide-react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname } from "next/navig
 
 const navItems = [
   { icon: LayoutDashboard, label: "Command Center", href: "/?view=dashboard" },
@@ -142,7 +142,5 @@ export function Sidebar() {
         </nav>
       )}
     </>
-  );
-}
   );
 }

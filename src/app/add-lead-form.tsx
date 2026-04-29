@@ -16,7 +16,7 @@ export function AddLeadForm({
         <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
           <div className="max-w-2xl">
             <p className="text-xs font-black uppercase text-[#176b5d]">Lead intake</p>
-            <h2 className="mt-1 text-xl font-black">Add or import leads</h2>
+            <h2 className="mt-1 text-xl font-black leading-tight">Add or import leads</h2>
             <p className="mt-2 text-sm leading-6 text-[#687169]">
               Save a company, attach owner context, then move it into the research and approval workflow.
             </p>

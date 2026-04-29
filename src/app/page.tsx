@@ -144,7 +144,7 @@ export default async function Home({
                   <p className="inline-flex items-center gap-2 rounded-full border border-[#cfe7de] bg-[#f3faf7] px-3 py-2 text-xs font-black uppercase text-[#176b5d]">
                     <Sparkles size={14} /> Pipeline command layer
                   </p>
-                  <h1 className="mt-4 text-3xl font-black sm:text-5xl">A visibly complete lead workflow in one command surface.</h1>
+                  <h1 className="mt-4 py-1 text-3xl font-black leading-[1.08] sm:text-5xl">A visibly complete lead workflow in one command surface.</h1>
                   <p className="mt-4 max-w-3xl text-sm leading-7 text-[#4f5a53] sm:text-base">
                     Move from playbook and discovery into pipeline management, approvals, and outcome tracking without losing the human review boundary.
                   </p>
@@ -167,7 +167,7 @@ export default async function Home({
                   <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
                     <div>
                       <p className="text-xs font-black uppercase text-[#176b5d]">Pipeline</p>
-                      <h2 className="mt-1 text-2xl font-black">Lead pipeline board</h2>
+                      <h2 className="mt-1 text-2xl font-black leading-tight">Lead pipeline board</h2>
                       <p className="mt-2 text-sm text-[#687169]">Filter the lead universe, inspect stage health, and move work forward with explicit operator actions.</p>
                     </div>
                     <PipelineFilterBar leadState={leadState} currentFilter={pipelineFilter} />
@@ -362,7 +362,7 @@ export default async function Home({
               <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
                 <div>
                   <p className="text-xs font-black uppercase text-[#176b5d]">Approvals</p>
-                  <h2 className="mt-1 text-2xl font-black">Central review queue</h2>
+                  <h2 className="mt-1 text-2xl font-black leading-tight">Central review queue</h2>
                   <p className="mt-2 text-sm text-[#687169]">Approve or reject prepared assets across the workspace without digging through every lead page.</p>
                 </div>
                 <ApprovalFilterBar items={leadState.approvalQueue} currentFilter={approvalFilter} />
@@ -413,7 +413,7 @@ export default async function Home({
           <div className="max-w-4xl">
             <section className="rounded-2xl border border-[#d2cab7] bg-[#fffdf8] p-6">
               <p className="text-xs font-black uppercase text-[#176b5d]">Setup</p>
-              <h2 className="mt-1 text-2xl font-black">System configuration</h2>
+              <h2 className="mt-1 text-2xl font-black leading-tight">System configuration</h2>
               <p className="mt-2 text-sm text-[#687169]">Link Postgres and your OpenAI key so the workspace can save real leads and run live generations.</p>
               <form action={saveLocalSetup} className="mt-6 grid gap-4">
                 <input name="databaseUrl" placeholder="DATABASE_URL" className="h-12 rounded-md border border-[#d9d2c1] bg-white px-4 text-sm" />
@@ -837,7 +837,7 @@ function Panel({
       <div className="flex items-start gap-3 border-b border-[#e3dccd] pb-4">
         <Icon className="mt-1 text-[#176b5d]" size={20} />
         <div>
-          <h2 className="text-xl font-black">{title}</h2>
+          <h2 className="py-0.5 text-xl font-black leading-tight">{title}</h2>
           <p className="mt-1 text-sm text-[#687169]">{subtitle}</p>
         </div>
       </div>

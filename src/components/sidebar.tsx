@@ -61,13 +61,13 @@ export function Sidebar() {
       </header>
 
       <div
-        className={`fixed inset-y-0 left-0 z-40 flex w-72 transform flex-col border-r border-gray-100 bg-white transition-transform duration-300 ease-in-out lg:static lg:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-40 flex w-72 shrink-0 transform flex-col border-r border-gray-100 bg-white transition-transform duration-300 ease-in-out lg:static lg:translate-x-0 ${
           isMenuOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
-        <div className="border-b border-gray-100 px-6 py-6">
+        <div className="border-b border-gray-100 px-6 py-7">
           <p className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-600">LeadForge AI</p>
-          <h1 className="mt-2 text-lg font-black text-gray-900">Pipeline Command Layer</h1>
+          <h1 className="mt-2 text-lg font-black leading-tight text-gray-900">Pipeline Command Layer</h1>
           <p className="mt-2 text-sm leading-6 text-gray-500">Run the operator workflow, then open the viral demo lab when you want a feature people instantly try and share.</p>
         </div>
 
@@ -143,12 +143,12 @@ function NavLink({
     <Link
       href={href}
       onClick={onNavigate}
-      className={`flex items-center gap-4 rounded-2xl px-4 py-3 transition-all duration-200 ${
+      className={`flex items-start gap-4 rounded-2xl px-4 py-3 transition-all duration-200 ${
         active ? "bg-gray-900 text-white shadow-lg shadow-gray-200" : "text-gray-500 hover:bg-gray-50 hover:text-gray-900"
       }`}
     >
-      <Icon size={20} className={active ? "text-emerald-400" : ""} />
-      <span className="text-sm font-semibold tracking-wide">{label}</span>
+      <Icon size={20} className={`mt-0.5 shrink-0 ${active ? "text-emerald-400" : ""}`} />
+      <span className="min-w-0 break-words text-sm font-semibold tracking-wide">{label}</span>
     </Link>
   );
 }

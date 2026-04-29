@@ -22,7 +22,7 @@ export function GrowthModeForm() {
             <p className="inline-flex items-center gap-2 rounded-full border border-[#cfe7de] bg-[#f3faf7] px-3 py-2 text-xs font-black uppercase text-[#176b5d]">
               <Sparkles size={14} /> Founder strategy feature
             </p>
-            <h1 className="mt-4 text-3xl font-black sm:text-5xl">One Prompt Growth Mode</h1>
+            <h1 className="mt-4 py-1 text-3xl font-black leading-[1.08] sm:text-5xl">One Prompt Growth Mode</h1>
             <p className="mt-4 max-w-3xl text-sm leading-7 text-[#4f5a53] sm:text-base">
               Give LeadForge one business goal and get back an operator-grade growth brief: ICP, offer, lead sources, outreach, website fixes, daily execution, KPIs, and a 90-day plan.
             </p>
@@ -81,7 +81,7 @@ export function GrowthModeForm() {
         <div className="space-y-6">
           <section className="rounded-2xl border border-[#d2cab7] bg-[#fffdf8] p-5">
             <p className="text-xs font-black uppercase text-[#176b5d]">Target outcome</p>
-            <h2 className="mt-1 text-2xl font-black">{result.targetOutcome}</h2>
+            <h2 className="mt-1 py-0.5 text-2xl font-black leading-tight">{result.targetOutcome}</h2>
             <p className="mt-4 text-sm leading-7 text-[#4f5a53]">{result.summary}</p>
           </section>
 
@@ -143,7 +143,7 @@ export function GrowthModeForm() {
               <Target size={18} className="text-[#176b5d]" />
               <div>
                 <p className="text-xs font-black uppercase text-[#176b5d]">90-day roadmap</p>
-                <h2 className="mt-1 text-2xl font-black">Operate the plan in stages</h2>
+                <h2 className="mt-1 py-0.5 text-2xl font-black leading-tight">Operate the plan in stages</h2>
               </div>
             </div>
             <div className="mt-5 grid gap-4 xl:grid-cols-3">
@@ -158,7 +158,7 @@ export function GrowthModeForm() {
               <BarChart3 size={18} className="text-[#176b5d]" />
               <div>
                 <p className="text-xs font-black uppercase text-[#176b5d]">Generation mode</p>
-                <h2 className="mt-1 text-xl font-black">{result.mode === "openai" ? "Live AI pass" : "Fallback demo pass"}</h2>
+                <h2 className="mt-1 py-0.5 text-xl font-black leading-tight">{result.mode === "openai" ? "Live AI pass" : "Fallback demo pass"}</h2>
               </div>
             </div>
             <p className="mt-3 text-sm leading-6 text-[#4f5a53]">{result.model}</p>
@@ -199,7 +199,7 @@ function Panel({
   return (
     <section className="rounded-2xl border border-[#d2cab7] bg-[#fffdf8] p-5">
       <p className="text-xs font-black uppercase text-[#176b5d]">{eyebrow}</p>
-      <h2 className="mt-1 text-xl font-black">{title}</h2>
+      <h2 className="mt-1 py-0.5 text-xl font-black leading-tight">{title}</h2>
       <div className="mt-4">{children}</div>
     </section>
   );

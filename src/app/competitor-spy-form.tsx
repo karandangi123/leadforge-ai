@@ -22,7 +22,7 @@ export function CompetitorSpyForm() {
             <p className="inline-flex items-center gap-2 rounded-full border border-[#cfe7de] bg-[#f3faf7] px-3 py-2 text-xs font-black uppercase text-[#176b5d]">
               <Sparkles size={14} /> Market intel feature
             </p>
-            <h1 className="mt-4 text-3xl font-black sm:text-5xl">Competitor Spy</h1>
+            <h1 className="mt-4 py-1 text-3xl font-black leading-[1.08] sm:text-5xl">Competitor Spy</h1>
             <p className="mt-4 max-w-3xl text-sm leading-7 text-[#4f5a53] sm:text-base">
               Drop in a competitor URL and get a sharp brief on how they position the offer, where their funnel is strong, and how to beat them with clearer messaging.
             </p>
@@ -159,7 +159,7 @@ function Panel({
   return (
     <section className="rounded-2xl border border-[#d2cab7] bg-[#fffdf8] p-5">
       <p className="text-xs font-black uppercase text-[#176b5d]">{eyebrow}</p>
-      <h2 className="mt-1 text-xl font-black">{title}</h2>
+      <h2 className="mt-1 py-0.5 text-xl font-black leading-tight">{title}</h2>
       <div className="mt-4">{children}</div>
     </section>
   );

@@ -1,58 +1,20 @@
 import {
-  AlertTriangle,
   ArrowUpRight,
-  BarChart3,
-  BrainCircuit,
   CheckCircle2,
-  Clock3,
-  ClipboardList,
-  Compass,
-  DatabaseZap,
-  FileText,
   Gauge,
-  GitBranch,
-  HelpCircle,
-  ListChecks,
-  MailPlus,
+  GitPullRequest,
   MessageSquareText,
-  PlayCircle,
   Search,
   ShieldCheck,
-  Sparkles,
-  Target,
-  TrendingUp,
-  XCircle,
-  GitPullRequest,
   UserCheck,
+  XCircle,
 } from "lucide-react";
 import Link from "next/link";
 
-import { runLeadDiscovery, saveCandidateLead, saveLocalSetup, saveWorkspacePlaybook } from "@/app/actions";
-import { AddLeadForm } from "@/app/add-lead-form";
-import { getDashboardLeads, getLeadMetrics } from "@/lib/leads";
+import { runLeadDiscovery, saveLocalSetup, saveWorkspacePlaybook } from "@/app/actions";
+import { getDashboardLeads, getLeadMetrics, type WorkspacePlaybookState, type DiscoveryState, type LeadDataState } from "@/lib/leads";
 
-const workflow = [
-  {
-    icon: Search,
-    title: "Research",
-    body: "Collects company facts, ICP fit signals, recent triggers, and source citations.",
-  },
-  {
-    icon: Gauge,
-    title: "Audit",
-    body: "Scores site clarity, conversion friction, SEO basics, speed signals, and trust gaps.",
-  },
-  {
-    icon: MessageSquareText,
-    title: "Generate",
-    body: "Creates outreach, follow-ups, Loom scripts, and CRM notes using approved prompts.",
-  },
-  {
-    icon: ShieldCheck,
-    title: "Approve",
-    body: "Routes every external action through a human queue before drafts or syncs happen.",
-  },
-];
+
 
 const roadmap = [
   "Gmail draft creation",
@@ -109,7 +71,6 @@ export default async function Home({
   const leads = leadState.leads;
   const agentRuns = getLeadMetrics(leads);
   const params = await searchParams;
-  const leadNotice = getLeadNotice(params.lead);
   const currentView = params.view || "dashboard";
 
   return (
@@ -273,22 +234,9 @@ export default async function Home({
   );
 }
 
-function getLeadNotice(status?: string) {
-  if (status === "created") return "Lead saved. It is now queued for AI research.";
-  if (status === "invalid") return "Lead was not saved. Check the company, website URL, and email format.";
-  if (status === "db-not-configured") return "Add DATABASE_URL and run the Prisma migration before saving leads.";
-  if (status === "db-unavailable") return "DATABASE_URL is set, but the app could not create a sample lead.";
-  if (status === "setup-invalid") return "Setup was not saved. Paste a valid Postgres or Supabase DATABASE_URL.";
-  if (status === "setup-failed") return "Setup could not complete. Check the database URL.";
-  if (status === "playbook-saved") return "Workspace playbook saved.";
-  if (status === "playbook-invalid") return "Playbook was not saved. Fill the required fields.";
-  if (status === "discovery-created") return "Lead discovery run created.";
-  if (status === "discovery-invalid") return "Discovery was not started.";
-  if (status === "candidate-duplicate") return "That candidate was already saved as a lead.";
-  return null;
-}
 
-function PlaybookWizard({ playbook, databaseStatus }: { playbook: any; databaseStatus: any }) {
+
+function PlaybookWizard({ playbook, databaseStatus }: { playbook: WorkspacePlaybookState; databaseStatus: LeadDataState["status"] }) {
   const disabled = databaseStatus !== "connected";
   return (
     <div className="p-8 rounded-3xl border border-gray-100 bg-white space-y-6">
@@ -308,7 +256,7 @@ function PlaybookWizard({ playbook, databaseStatus }: { playbook: any; databaseS
   );
 }
 
-function LeadDiscoveryPanel({ discovery, databaseStatus }: { discovery: any; databaseStatus: any }) {
+function LeadDiscoveryPanel({ discovery, databaseStatus }: { discovery: DiscoveryState; databaseStatus: LeadDataState["status"] }) {
   const disabled = databaseStatus !== "connected";
   return (
     <div className="p-8 rounded-3xl border border-gray-100 bg-white space-y-6">
@@ -321,10 +269,10 @@ function LeadDiscoveryPanel({ discovery, databaseStatus }: { discovery: any; dat
         <div className="pt-4 border-t border-gray-50">
           <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">Top Candidates</p>
           <div className="space-y-2">
-            {discovery.candidates.slice(0, 3).map((c: any) => (
+            {discovery.candidates.slice(0, 3).map((c) => (
               <div key={c.company} className="flex items-center justify-between p-3 rounded-lg bg-gray-50/50">
                 <span className="text-sm font-bold text-gray-700">{c.company}</span>
-                <span className="text-xs font-bold text-emerald-600">{c.score}% Match</span>
+                <span className="text-xs font-bold text-emerald-600">{c.fitScore}% Match</span>
               </div>
             ))}
           </div>

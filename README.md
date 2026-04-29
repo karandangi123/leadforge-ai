@@ -2,9 +2,10 @@
 > **Enterprise-grade AI Command Center for high-scale revenue operations. Modular, traceable, and architected for growth.**
 
 [![Security: Gitleaks](https://img.shields.io/badge/Security-Gitleaks-brightgreen.svg)](https://github.com/gitleaks/gitleaks)
+[![CI: CodeQL](https://github.com/karandangi123/leadforge-ai/actions/workflows/codeql.yml/badge.svg)](https://github.com/karandangi123/leadforge-ai/actions/workflows/codeql.yml)
+[![Deployment: Vercel](https://deploy-badge.vercel.app/vercel/leadforge-ai-weld)](https://leadforge-ai-weld.vercel.app)
 [![Architecture: Hybrid SPA](https://img.shields.io/badge/Architecture-Hybrid%20SPA-blue.svg)](#architecture)
 [![Interface: On--Demand%20Mobile](https://img.shields.io/badge/Interface-On--Demand%20Mobile-emerald.svg)](#hybrid-navigational-shell)
-[![Production: Live](https://img.shields.io/badge/Production-Live-blueviolet.svg)](https://leadforge-ai-weld.vercel.app)
 [![License: MIT](https://img.shields.io/badge/License-MIT-gray.svg)](LICENSE)
 
 ---

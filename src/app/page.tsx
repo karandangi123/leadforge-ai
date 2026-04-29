@@ -256,7 +256,7 @@ export default async function Home({
       </section>
 
       {/* Unified Masterpiece Signature Bar */}
-      <footer className="sticky bottom-20 lg:bottom-0 z-20 border-t border-gray-100 bg-white/80 backdrop-blur-md py-3 px-4">
+      <footer className="sticky bottom-0 z-20 border-t border-gray-100 bg-white/80 backdrop-blur-md py-3 px-4">
         <div className="flex flex-col lg:flex-row items-center justify-center gap-3 lg:gap-6 text-[9px] lg:text-[10px] font-bold uppercase tracking-[0.15em] text-gray-400">
           <p className="text-center">© 2026 LeadForge AI • Architected by Karan Dangi</p>
           <div className="flex items-center gap-4 border-t border-gray-50 pt-2 lg:border-t-0 lg:pt-0">

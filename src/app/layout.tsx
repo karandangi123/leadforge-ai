@@ -21,7 +21,7 @@ export default function RootLayout({
       <body className={`${inter.variable} ${outfit.variable} font-inter antialiased bg-[#fdfdfc]`}>
         <div className="flex flex-col lg:flex-row min-h-screen">
           <Sidebar />
-          <main className="flex-1 bg-gray-50/50 pb-20 lg:pb-0 min-w-0">
+          <main className="flex-1 bg-gray-50/50 min-w-0">
             {children}
           </main>
         </div>

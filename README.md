@@ -1,17 +1,17 @@
 # LeadForge AI
 
-> Human-in-the-loop AI revenue workflow for discovery, research, website audits, approvals, and founder growth planning.
+> Human-in-the-loop revenue workflow with one shipped app, real workspace packages, and approval-safe external actions.
 
 [![CodeQL](https://github.com/karandangi123/leadforge-ai/actions/workflows/codeql.yml/badge.svg)](https://github.com/karandangi123/leadforge-ai/actions/workflows/codeql.yml)
 [![Security: Gitleaks](https://img.shields.io/badge/security-gitleaks-1f9d55)](https://github.com/gitleaks/gitleaks)
 [![License: MIT](https://img.shields.io/badge/license-MIT-6b7280.svg)](LICENSE)
 [![Live App](https://img.shields.io/badge/live-leadforge--ai--weld.vercel.app-176b5d)](https://leadforge-ai-weld.vercel.app)
 
-[Live demo](https://leadforge-ai-weld.vercel.app) • [Quick start](#quick-start) • [Architecture](#architecture) • [Security](#security) • [Roadmap](#roadmap)
+[Live demo](https://leadforge-ai-weld.vercel.app) • [Quick start](#quick-start) • [Monorepo](#monorepo) • [Architecture](#architecture) • [Security](#security)
 
 ## What LeadForge AI is
 
-LeadForge AI is an operator-grade workspace for revenue and growth teams.
+LeadForge AI is an operator-grade workspace for revenue and growth teams. The current repository is intentionally scoped around one production-facing app, `apps/dashboard`, plus the workspace packages that support it.
 
 It combines:
 
@@ -26,19 +26,11 @@ The product is built to feel like a real workflow, not a one-shot prompt demo.
 
 ## What you can do right now
 
-### Core workspace
-
 - Build a product and ICP playbook
 - Save leads manually or by CSV import
-- Move leads through a real pipeline
-- Open a lead workspace with timeline, research, audits, approvals, and outcomes
-- Review prepared work from a centralized approvals queue
-
-### Growth surfaces
-
-- Roast a website
-- Run competitor positioning analysis
-- Generate a one-prompt growth brief
+- Move leads through a pipeline with approvals and trace visibility
+- Run website roasts, competitor analysis, and growth planning flows
+- Prepare outreach for approval-safe Gmail draft creation
 
 ## Why it is different
 
@@ -59,19 +51,35 @@ The product is built to feel like a real workflow, not a one-shot prompt demo.
 | `Competitor Spy` | Offer, CTA, and funnel positioning analysis |
 | `Growth Mode` | 90-day growth strategy brief from one prompt |
 
+## Monorepo
+
+```text
+apps/
+  dashboard/        Next.js 16 App Router UI and server actions
+packages/
+  agents/           AI runtime and structured outputs
+  db/               Prisma schema, generated client, DB helpers
+  evals/            Agent scoring and quality checks
+  integrations/     External adapters such as Gmail draft creation
+```
+
+Shared runtime logic lives in packages. Dashboard-specific presentation and workflow state stay in `apps/dashboard`.
+
 ## Architecture
 
 ```mermaid
 graph TD
-    Operator((Operator)) --> App[Next.js 16 App Router]
+    Operator((Operator)) --> App["apps/dashboard"]
     App --> Actions[Server Actions]
-    Actions --> Prisma[Prisma 7]
-    Prisma --> Postgres[(PostgreSQL)]
-    Actions --> Agents[AI Agent Layer]
+    Actions --> DB["@leadforge/db"]
+    Actions --> Agents["@leadforge/agents"]
+    Actions --> Evals["@leadforge/evals"]
+    Actions --> Integrations["@leadforge/integrations"]
+    DB --> Postgres[(PostgreSQL)]
     Agents --> Research[Lead Research]
     Agents --> Audit[Website Audit]
     Agents --> Outreach[Outreach Prep]
-    Agents --> Strategy[Growth Strategy]
+    Integrations --> Gmail[Draft Creation Only]
     Outreach --> Queue[Approval Queue]
     Queue --> Operator
     Actions --> Demo[Seeded Demo Mode]
@@ -98,7 +106,7 @@ graph TD
 ```bash
 git clone https://github.com/karandangi123/leadforge-ai.git
 cd leadforge-ai
-npm install
+npm ci
 ```
 
 ### Environment
@@ -120,26 +128,36 @@ Local-only guidance:
 
 ```bash
 npm run db:generate
-npm run db:migrate
+npm run db:push
 ```
 
 ### Run
 
 ```bash
-npm run dev
+npm run dev --workspace apps/dashboard
 ```
 
 Open [http://localhost:3000](http://localhost:3000).
 
+### Quality checks
+
+```bash
+npm run typecheck
+npm run lint:all
+npm run build:all
+npm run test:e2e
+```
+
 ## First-run flow
 
-1. Open the app in demo mode or connect a database.
+1. Open the dashboard in demo mode or connect a database.
 2. Fill the Product + ICP playbook.
 3. Add or import leads.
 4. Run research and audit passes.
 5. Generate drafts or client ops prep.
 6. Review work in the approvals queue.
-7. Track outcomes and refine the workflow.
+7. Create a Gmail draft only after approval.
+8. Track outcomes and refine the workflow.
 
 ## Security
 
@@ -147,34 +165,17 @@ Open [http://localhost:3000](http://localhost:3000).
 - CodeQL for static analysis
 - `.env` ignored in Git and excluded from Vercel CLI uploads
 - Human approval boundary before outbound or integration-style actions
+- Gmail support is draft creation only in this phase; there is no auto-send path
 - No fake claims of automated LinkedIn sending or unsafe scraping workflows
 
 See [SECURITY.md](SECURITY.md) for reporting guidance.
 
-## Repository standards
+## Current priorities
 
-This repository is being shaped as a production-grade public project:
-
-- clear README and quick start
-- contributing guide
-- security policy
-- issue templates
-- PR template
-- conventional commits
-- Vercel deployment
-
-## Roadmap
-
-- [x] Pipeline board and lead workspace
-- [x] Approval queue
-- [x] CSV import with duplicate handling
-- [x] Roast Lab
-- [x] Competitor Spy
-- [x] One Prompt Growth Mode
-- [ ] Founder Content Engine
-- [ ] Proposal generator
-- [ ] CRM and provider adapters behind approval
-- [ ] richer evaluations and trace analytics
+- Fresh clone to green workspace checks
+- Honest package boundaries across `apps/dashboard` and `packages/*`
+- Approval-safe Gmail draft creation as the first real external workflow
+- Clear demo mode behavior when `DATABASE_URL` or `OPENAI_API_KEY` is missing
 
 ## Contributing
 

@@ -1,0 +1,43 @@
+{
+  "name": "leadforge-ai",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint",
+    "typecheck": "tsc --noEmit",
+    "test:e2e": "playwright test",
+    "test:jobs": "tsx --test src/lib/ai-jobs/*.test.ts src/lib/*.test.ts"
+  },
+  "dependencies": {
+    "@leadforge/agents": "*",
+    "@leadforge/db": "*",
+    "@leadforge/evals": "*",
+    "@leadforge/integrations": "*",
+    "bullmq": "^5.61.0",
+    "googleapis": "^171.4.0",
+    "ioredis": "^5.8.0",
+    "lucide-react": "^1.14.0",
+    "next": "16.2.4",
+    "pg": "^8.20.0",
+    "react": "19.2.4",
+    "react-dom": "19.2.4",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.59.1",
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/pg": "^8.20.0",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "16.2.4",
+    "prisma": "^7.8.0",
+    "tailwindcss": "^4",
+    "tsx": "^4.20.6",
+    "typescript": "^5"
+  }
+}

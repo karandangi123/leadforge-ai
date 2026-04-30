@@ -1,0 +1,12 @@
+# LeadForge AI CODEOWNERS
+
+# Global owners
+* @karandangi123
+
+# Specific paths
+/apps/dashboard/ @karandangi123
+/packages/agents/ @karandangi123
+/packages/db/ @karandangi123
+/packages/evals/ @karandangi123
+/packages/integrations/ @karandangi123
+/apps/dashboard/prompts/ @karandangi123

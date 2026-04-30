@@ -16,6 +16,8 @@
 # next.js
 /.next/
 /out/
+apps/*/.next/
+apps/*/out/
 
 # production
 /build
@@ -23,6 +25,8 @@
 # misc
 .DS_Store
 *.pem
+output/
+tmp/
 
 # debug
 npm-debug.log*
@@ -41,3 +45,6 @@ yarn-error.log*
 next-env.d.ts
 
 /src/generated/prisma
+apps/dashboard/src/generated/prisma
+apps/dashboard/playwright-report
+apps/dashboard/test-results

@@ -1,15 +1,16 @@
 # LeadForge AI Architecture
 
-LeadForge AI is designed as an open-source AI revenue operations platform. The first version uses a Next.js app with seeded data. Production versions should split the system into web, worker, database, integrations, agent orchestration, and eval packages.
+LeadForge AI is structured as a monorepo with one shipped app today and a small set of real workspace packages. The current goal is repository trustworthiness: contributors should be able to clone the repo, understand the boundaries, and get to a green local build without reverse-engineering stale paths.
 
-## Target Modules
+## Current Modules
 
-- `apps/web`: dashboard, lead workspace, approval queue, settings, trace viewer
-- `apps/worker`: scheduled jobs, enrichment runs, reminders, CRM sync tasks
+- `apps/dashboard`: dashboard, lead workspace, approval queue, settings, and growth surfaces
 - `packages/agents`: research, audit, outreach, reviewer, follow-up, and outcome agents
+- `packages/db`: Prisma schema, generated client, typed database helpers
+- `packages/evals`: output scoring and quality checks
 - `packages/integrations`: Gmail, Airtable, HubSpot, Salesforce, Slack, Notion
-- `packages/database`: Prisma schema, migrations, typed database helpers
-- `packages/evals`: datasets, scorers, prompt regression tests, reports
+
+The repository does not currently ship a worker app. Any docs or CI assumptions about `apps/worker`, `develop`, or legacy root-level `src/` and `prisma/` paths should be treated as stale unless they have been reintroduced intentionally.
 
 ## Core Flow
 
@@ -23,13 +24,13 @@ LeadForge AI is designed as an open-source AI revenue operations platform. The f
 
 ## Database Layer
 
-The app uses Prisma 7 with a PostgreSQL driver adapter. The schema lives in `prisma/schema.prisma`, the Prisma client helper lives in `src/lib/prisma.ts`, and dashboard lead reads live in `src/lib/leads.ts`.
+The app uses Prisma 7 with a PostgreSQL driver adapter. The schema lives in `packages/db/prisma/schema.prisma`, the Prisma client helper lives in `packages/db/src/prisma.ts`, and dashboard lead reads live in `apps/dashboard/src/lib/leads.ts`.
 
 The initial dashboard is intentionally resilient: if `DATABASE_URL` is missing or the database is unreachable, the UI falls back to seeded leads. Once Postgres is connected and migrations are applied, the Add Lead form writes real records and the table reads from the database.
 
 The lead detail route is `/leads/[leadId]`. It loads one lead plus `ResearchRun`, `WebsiteAudit`, `OutreachDraft`, `Approval`, and `AgentTrace` records. Seeded lead IDs keep the demo useful before a database is connected.
 
-Lead actions live in `src/app/actions.ts`. They call the agent runner in `src/lib/ai-agents.ts`, which uses the OpenAI Responses API with structured JSON outputs when `OPENAI_API_KEY` is configured. If no key is present, the runner returns local deterministic fallback outputs so the workflow remains testable.
+Lead actions live under `apps/dashboard/src/app/actions`. They call the agent runtime in `packages/agents`, the evaluation helpers in `packages/evals`, and the Gmail adapter in `packages/integrations`. If `OPENAI_API_KEY` is missing, the agent runner returns deterministic fallback outputs so the workflow remains testable.
 
 ## Workspace Playbook Layer
 
@@ -39,15 +40,15 @@ The `WorkspacePlaybook` model stores the product, ideal customer profile, target
 
 The `DiscoveryRun` and `CandidateLead` models power the Find Leads workflow. An operator enters a target market, the app creates a compliant query plan, records allowed and blocked source categories, and generates scored candidate companies before anything is saved to the lead pipeline.
 
-Discovery is intentionally conservative. Safe source categories include company websites, search snippets, public directories, GitHub organizations, job posts, news pages, and public tech hints. The product explicitly blocks undetectable scraping, login-gated scraping, CAPTCHA bypass, and stealth LinkedIn automation. LinkedIn data should enter the system only through a user-approved manual import.
+Discovery is intentionally conservative. Safe source categories include company websites, search snippets, public directories, GitHub organisations, job posts, news pages, and public tech hints. The product explicitly blocks undetectable scraping, login-gated scraping, CAPTCHA bypass, and stealth LinkedIn automation. LinkedIn data should enter the system only through a user-approved manual import.
 
 Saving a candidate creates a normal `Lead` record with the candidate's evidence, fit score, source type, initial research run, and trace. This keeps discovery auditable and keeps the same human-review path as manually added leads.
 
 ## Client Operations Layer
 
-The next client-ready step prepares external work without performing unsafe side effects. `prepareClientOperations` generates a Loom script, CRM note, Airtable-ready payload, CRM payload, follow-up reminder, approval item, and agent trace. These records live in `OutreachDraft`, `IntegrationSync`, and `FollowUpReminder` so future provider adapters can promote them into real Gmail, Airtable, HubSpot, or Salesforce actions after human approval.
+The next client-ready step prepares external work without performing unsafe side effects. `prepareClientOperations` generates a Loom script, CRM note, payload stubs, follow-up reminders, approval items, and traces. These records live in `OutreachDraft`, `IntegrationSync`, and `FollowUpReminder` so future provider adapters can promote them into real actions after human approval.
 
-Reviewer actions keep this boundary explicit. Approving prepared work marks pending approvals as approved, moves ready sync payloads to an approved state, updates the lead's next action, and writes a reviewer trace. Rejecting blocks sync payloads and moves the lead back into revision without contacting external services.
+Reviewer actions keep this boundary explicit. Approving prepared work marks pending approvals as approved, moves ready sync payloads to an approved state, updates the lead's next action, and writes a reviewer trace. Rejecting blocks sync payloads and moves the lead back into revision without contacting external services. The only real provider path in scope for this phase is Gmail draft creation, and it must never auto-send.
 
 ## Outcome Learning Layer
 
@@ -59,7 +60,7 @@ The dashboard derives operational analytics from saved leads, agent traces, eval
 
 ## Evaluation Layer
 
-Agent quality checks live in `src/lib/evaluations.ts`. Each research, website audit, and outreach action creates an `AgentEvaluation` record with a score, pass/fail status, and check-level report. The lead detail page displays these in a Quality Evals panel so operators can see why an output is ready or needs review.
+Agent quality checks live in `packages/evals/src/evaluations.ts`. Each research, website audit, and outreach action creates an `AgentEvaluation` record with a score, pass/fail status, and check-level report. The lead detail page displays these in a Quality Evals panel so operators can see why an output is ready or needs review.
 
 ## Production Principles
 

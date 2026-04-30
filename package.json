@@ -9,6 +9,7 @@
     "dev:all": "turbo run dev",
     "dev:worker": "npm run dev --workspace apps/worker",
     "worker": "npm run worker --workspace apps/worker",
+    "vercel-build": "npm run build --workspace apps/dashboard",
     "build:all": "npm run build --workspaces --if-present",
     "lint:all": "npm run lint --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present",

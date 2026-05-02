@@ -6,6 +6,6 @@
   "types": "./src/index.ts",
   "type": "module",
   "dependencies": {
-    "stripe": "^14.0.0"
+    "stripe": "^22.1.0"
   }
 }

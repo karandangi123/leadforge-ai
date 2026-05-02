@@ -1,35 +1,30 @@
 # Security Policy
 
-LeadForge AI is committed to maintaining a secure platform for revenue and growth operations. We appreciate the efforts of security researchers in keeping our community safe.
+## Security Philosophy
+LeadForge AI is an investor-grade RevOps platform. We prioritize the security of user data, API credentials, and autonomous workflows above all else. Our security posture is based on:
+- **Zero-Trust generated artifacts**: We never commit build or prisma-generated files.
+- **Automated Scanning**: Every PR is audited for secret leaks and dependency vulnerabilities.
+- **Safe Execution**: All agentic actions are approval-gated by default.
 
 ## Supported Versions
+Only the latest version of the `main` branch is supported for security updates.
 
-We provide security updates for the following versions of LeadForge AI:
-
-| Version | Supported |
-| ------- | --------- |
-| Latest  | ✅ Yes     |
-| < Latest| ❌ No      |
+| Version | Supported          |
+| ------- | ------------------ |
+| v1.x    | :white_check_mark: |
+| < 1.0   | :x:                |
 
 ## Reporting a Vulnerability
+**DO NOT OPEN A PUBLIC ISSUE** for security vulnerabilities.
 
-**DO NOT open a public GitHub issue for security vulnerabilities.**
+If you discover a security risk, please report it privately:
+1. **Email**: security@leadforge.ai
+2. **Details**: Include a clear description of the vulnerability, steps to reproduce, and potential impact.
 
-If you discover a security vulnerability, please report it via **GitHub Private Vulnerability Reporting**. This can be found under the **Security** tab of this repository.
+We aim to acknowledge all reports within 24 hours and provide a fix within 72 hours for critical issues.
 
-### Our Commitment
-- We will acknowledge receipt of your report within **48 hours**.
-- We will provide an estimated timeline for a resolution.
-- We will notify you once the fix is live.
-- We will offer public credit in our `CHANGELOG` for responsible disclosure, unless you prefer to remain anonymous.
+## Disclosure Policy
+We follow a 90-day responsible disclosure policy. We ask that you do not share details of the vulnerability publicly until a patch has been released.
 
-## Pro-Feature & Billing Protection
-
-If you discover a way to bypass billing, role-based access control, or proprietary feature flags, please treat this as a high-priority security vulnerability and report it privately.
-
-## Secret Handling Guidelines
-
-- **Never** commit `.env` files or plaintext credentials to the repository.
-- Use the provided `.env.example` as a template for local development.
-- For production deployments on Vercel, use the Vercel Dashboard to manage environment variables securely.
-- If you accidentally commit a secret, please notify the maintainers immediately so we can rotate the credential and clean the Git history.
+---
+*LeadForge AI is committed to maintaining a secure and transparent platform for the RevOps community.*

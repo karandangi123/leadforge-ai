@@ -425,16 +425,16 @@ export default async function Home({
             <DashboardHero agentRuns={agentRuns} />
 
             <section className="grid gap-6 xl:grid-cols-2">
-              <Panel icon={Sparkles} title="Quick Actions Launcher" subtitle="Direct entry points for the high-frictionless growth tools">
+              <Panel icon={Sparkles} title="Quick Actions Launcher" subtitle="Direct entry points for the high-frictionless growth tools" isPro={isEntitledPro}>
                 <div className="grid gap-3 md:grid-cols-2">
                   <QuickActionCard href="/dashboard?view=roast" title="Roast Lab" detail="Generate a page teardown, rewrites, and revenue opportunity estimate." />
                   <QuickActionCard href="/dashboard?view=competitor" title="Competitor Spy" detail="Break down positioning, CTA patterns, and find strategic voids." />
                   <FeatureGate feature="Growth Strategy" isEntitled={isEntitledPro}>
-                    <QuickActionCard href="/dashboard?view=growth" title="Growth Brief" detail="Turn one business goal into a complete 90-day execution plan." isPro />
+                    <QuickActionCard href="/dashboard?view=growth" title="Growth Brief" detail="Turn one business goal into a complete 90-day execution plan." isPro={isEntitledPro} />
                   </FeatureGate>
-                  <QuickActionCard href="/dashboard?view=content" title="Content Engine" detail="Generate founder-grade pillars, posts, CTAs, and a publishing system." isPro />
+                  <QuickActionCard href="/dashboard?view=content" title="Content Engine" detail="Generate founder-grade pillars, posts, CTAs, and a publishing system." isPro={isEntitledPro} />
                   <FeatureGate feature="Proposal Packaging" isEntitled={isEntitledPro}>
-                    <QuickActionCard href="/dashboard?view=proposal" title="Proposal Engine" detail="Create a client-facing proposal package with scope and pricing." isPro />
+                    <QuickActionCard href="/dashboard?view=proposal" title="Proposal Engine" detail="Create a client-facing proposal package with scope and pricing." isPro={isEntitledPro} />
                   </FeatureGate>
                   <QuickActionCard href="/dashboard?view=targeting" title="Playbook Center" detail="Save product, ICP, and tone before running AI sequences." />
                   <QuickActionCard href="#add-lead" title="Lead Discovery" detail="Import leads manually or by CSV and route them into the board." />

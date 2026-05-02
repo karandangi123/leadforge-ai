@@ -78,7 +78,7 @@ const menuItems = [
   }
 ];
 
-export function TopNav() {
+export function TopNav({ isPro }: { isPro?: boolean }) {
   const searchParams = useSearchParams();
   const currentView = searchParams.get("view") || "dashboard";
   const [activeMenu, setActiveMenu] = useState<string | null>(null);
@@ -242,8 +242,17 @@ export function TopNav() {
             <Bell size={20} />
             <div className="absolute top-2 right-2 w-2 h-2 rounded-full bg-[#22D3EE] border-2 border-[#02040a] shadow-[0_0_8px_rgba(34,211,238,0.5)]" />
          </button>
-         <div className="w-8 h-8 rounded-full bg-[var(--dark-bg)] border border-[var(--accent-cyan)]/20 flex items-center justify-center text-white text-xs font-black shadow-md transition-all cursor-pointer">
-           KD
+         <div className="flex items-center gap-2 group cursor-pointer">
+           <div className="text-right hidden sm:block">
+             <p className="text-[10px] font-black text-white leading-none mb-1">Karan Dangi</p>
+             <p className="text-[8px] font-bold text-[#94A3B8] uppercase tracking-widest">{isPro ? "Pro Plan" : "Free Core"}</p>
+           </div>
+           <div className="w-8 h-8 rounded-full bg-[var(--dark-bg)] border border-[var(--accent-cyan)]/20 flex items-center justify-center text-white text-xs font-black shadow-md transition-all group-hover:border-[var(--accent-teal)]">
+             KD
+           </div>
+           {isPro && (
+             <div className="ml-1 w-2 h-2 rounded-full bg-[#F59E0B] shadow-[0_0_8px_rgba(245,158,11,0.5)]" />
+           )}
          </div>
       </div>
     </nav>

@@ -16,8 +16,10 @@ const IS_PRO_MODE = process.env.NODE_ENV === "production" || process.env.LEADFOR
 const STRIPE_SECRET = process.env.STRIPE_SECRET_KEY || "mock_key";
 
 const stripe = new Stripe(STRIPE_SECRET, {
-  apiVersion: "2025-01-27-acacia" as any,
+  apiVersion: "2023-10-16" as any,
 });
+
+export type BillingEvent = Stripe.Event;
 
 export class BillingService {
   /**
@@ -93,5 +95,56 @@ export class BillingService {
       where: { workspaceId_feature_period: { workspaceId, feature, period } },
     });
     return meter?.quantity ?? 0;
+  }
+
+  /**
+   * WEBHOOK HANDLER: Processes incoming Stripe events.
+   * SECURITY: Verifies signatures and updates entitlements in real-time.
+   */
+  static async handleWebhook(body: string, signature: string, secret: string) {
+    const event = stripe.webhooks.constructEvent(body, signature, secret);
+    const prisma = getPrisma();
+
+    switch (event.type) {
+      case "checkout.session.completed": {
+        const session = event.data.object as Stripe.Checkout.Session;
+        const workspaceId = session.client_reference_id;
+        if (!workspaceId) break;
+
+        // Provision Entitlements
+        await prisma.entitlement.upsert({
+          where: { workspaceId_feature: { workspaceId, feature: "PRO_FEATURES" } },
+          update: { isActive: true },
+          create: { workspaceId, feature: "PRO_FEATURES", isActive: true },
+        });
+
+        await prisma.workspace.update({
+          where: { id: workspaceId },
+          data: { stripeCustomerId: session.customer as string, plan: "PRO" },
+        });
+        break;
+      }
+
+      case "customer.subscription.deleted": {
+        const subscription = event.data.object as Stripe.Subscription;
+        const workspace = await prisma.workspace.findUnique({
+          where: { stripeSubscriptionId: subscription.id },
+        });
+
+        if (workspace) {
+          await prisma.entitlement.update({
+            where: { workspaceId_feature: { workspaceId: workspace.id, feature: "PRO_FEATURES" } },
+            data: { isActive: false },
+          });
+          await prisma.workspace.update({
+            where: { id: workspace.id },
+            data: { plan: "FREE" },
+          });
+        }
+        break;
+      }
+    }
+
+    return { received: true };
   }
 }

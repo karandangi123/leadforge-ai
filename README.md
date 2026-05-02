@@ -1,116 +1,118 @@
-# LeadForge AI
+# ⚡️ LeadForge AI: The Autonomous RevOps Engine
 
-### The Autonomous Revenue Ops Architect
+[![Security Scan](https://github.com/karandangi123/leadforge-ai/actions/workflows/security.yml/badge.svg)](https://github.com/karandangi123/leadforge-ai/actions/workflows/security.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-LeadForge AI is an operator-grade, high-fidelity platform designed for revenue and growth teams. It bridges the gap between raw AI potential and production-grade outbound workflows using a **Human-in-the-loop (HITL)** architecture.
+**LeadForge AI** is an investor-grade, open-core platform designed to automate high-scale, multi-channel outbound growth. Built with a focus on security, scalability, and agentic intelligence, it empowers RevOps teams to build autonomous sales pipelines that research, audit, and engage leads with founder-level precision.
 
-[![CI Status](https://github.com/karandangi123/leadforge-ai/actions/workflows/ci.yml/badge.svg)](https://github.com/karandangi123/leadforge-ai/actions/workflows/ci.yml)
-[![Security: Gitleaks](https://img.shields.io/badge/security-gitleaks-22D3EE)](https://github.com/gitleaks/gitleaks)
-[![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-6b7280.svg)](LICENSE)
-[![Live Dashboard](https://img.shields.io/badge/live-platform-176b5d)](https://leadforge-ai-weld.vercel.app)
-
----
-
-## ⚡ The Revenue Engine
-
-LeadForge AI replaces fragmented legacy tools with a single, high-fidelity revenue system. It handles everything from autonomous market discovery to founder-grade outreach drafts.
-
-### Key Capabilities
-- **Precision Discovery**: Autonomous market scanning for high-fit industry signals and custom intent.
-- **Deep Research**: Automated website audits and competitor intelligence teardowns.
-- **HITL Approvals**: A centralized queue where generated work is reviewed before any external action.
-- **Gmail Command**: approval-safe draft creation with zero auto-send risk.
-- **Growth Lab**: AI-driven 90-day execution strategies and content planning.
-
----
-
-## 🏗 Architecture
-
-LeadForge follows a clean, monorepo architecture designed for scale and security.
+## 🏗 Modular Architecture
+LeadForge AI is architected as a modular monorepo, enforcing strict boundaries between the open-source core and proprietary SaaS capabilities.
 
 ```mermaid
 graph TD
-    Operator((Operator)) --> Dashboard["apps/dashboard (Next.js 16)"]
-    Dashboard --> Actions[Server Actions]
-    Actions --> DB["@leadforge/db (Prisma)"]
-    Actions --> Agents["@leadforge/agents (AI Runtime)"]
-    Actions --> Integrations["@leadforge/integrations (Gmail/Google)"]
-    DB --> Postgres[(PostgreSQL)]
-    Agents --> Research[Lead Intelligence]
-    Agents --> Audit[Conversion Audit]
-    Integrations --> Google[Secure OAuth Flow]
-    Research --> Queue[Approval Queue]
-    Queue --> Operator
+    UI[apps/dashboard] --> Auth[Auth.js / RBAC]
+    UI --> Billing[packages/billing]
+    UI --> Agents[packages/agents]
+    
+    Agents --> LLM[OpenAI / Anthropic]
+    Agents --> Registry[Prompt Registry]
+    
+    Registry --> Public[Open Source Defaults]
+    Registry --> Private[Premium Private API]
+    
+    Agents --> Integrations[packages/integrations]
+    
+    Integrations --> Gmail[Gmail API]
+    Integrations --> LinkedIn[LinkedIn API]
+    Integrations --> Enrichment[Waterfall Enrichment]
+    
+    Enrichment --> Apollo[Apollo]
+    Enrichment --> Clearbit[Clearbit]
+    Enrichment --> AI[OpenAI Fallback]
 ```
 
----
+## 🤖 Autonomous Workflow
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant A as Agent Engine
+    participant I as Integrations
+    participant B as Billing Gate
+    
+    U->>A: Trigger Lead Research
+    A->>I: Fetch Firmographics
+    I-->>A: Merged Data
+    A->>A: Generate Outreach Strategy
+    A->>B: Check Entitlement (Pro?)
+    B-->>A: Entitled / Gated
+    A->>U: Request Human Approval
+    U->>A: Approve Draft
+    A->>I: Send (Gmail/LinkedIn/SMS)
+```
 
-## 🛠 Tech Stack
+- **`apps/dashboard`**: A high-fidelity Next.js application with cinematic UI gating and real-time revenue intelligence.
+- **`packages/agents`**: The orchestration layer for autonomous workflows (Research, Audit, Outreach).
+- **`packages/integrations`**: Robust adapters for Gmail, LinkedIn, Twilio, and a waterfall enrichment engine (Clearbit, Apollo, etc.).
+- **`packages/billing`**: Hardened commercial layer with Stripe integration and Pro-tier entitlement management.
 
-- **Frontend**: Next.js 16 (App Router), React 19, Tailwind CSS 4, Framer Motion
-- **Runtime**: Turborepo (Monorepo), Node.js 20+
-- **Database**: Prisma 7 + PostgreSQL
-- **Security**: Auth.js, Zod, Gitleaks, CodeQL
-- **Deployment**: Vercel
+## ✨ Key Features
+- **Autonomous Research**: AI agents that perform deep-dive firmographic and technographic analysis on every lead.
+- **Multi-Channel Command Center**: Unified sequencing across Email, LinkedIn, and SMS with human-in-the-loop approval gates.
+- **Cinematic Gating**: A "Smarter" UI that distinguishes between free core features and premium Pro/Agency capabilities.
+- **Enterprise-Grade Security**: Automated secret scanning (Gitleaks), RBAC foundations, and a zero-trust approach to generated artifacts.
 
----
+## 🚀 Getting Started
 
-## 🚀 Quick Start
+### 1. Prerequisites
+- **Node.js** (v18+)
+- **Postgres** (Local or Managed)
+- **OpenAI API Key**
 
-### 1. Initialize Repository
+### 2. Installation
 ```bash
+# Clone the repository
 git clone https://github.com/karandangi123/leadforge-ai.git
 cd leadforge-ai
-npm ci
-```
 
-### 2. Configure Environment
-```bash
+# Install dependencies
+npm install
+
+# Set up environment
 cp .env.example .env
-# Fill in your DATABASE_URL, OPENAI_API_KEY, and AUTH_SECRET
+# Fill in your OPENAI_API_KEY and DATABASE_URL
 ```
 
-### 3. Setup Database
+### 3. Database Initialization
 ```bash
-npm run db:generate
-npm run db:push
+npx prisma migrate dev
+npx prisma generate
 ```
 
-### 4. Launch Command Center
+### 4. Launch
 ```bash
-npm run dev:all
+npm run dev
 ```
 
----
+## 🔐 Open-Core & Commercial Boundaries
+LeadForge AI follows a strategic **Open-Core** model. The core orchestration, adapters, and UI are open-source. Proprietary SaaS logic (Premium Prompts, Advanced Deliverability, and Commercial Billing) is isolated via environmental gates:
 
-## 🛡 Security & Open Core
-
-LeadForge AI is built with an **Open Core** philosophy:
-- **Public**: The full UI, AI runtime, and community-driven integrations are open-source under Apache-2.0.
-- **Private**: Enterprise billing, premium automation models, and SLA-backed services are isolated via hosted APIs and server-side entitlement checks.
-
-**Security Policy**: Never commit `.env` files. Report vulnerabilities via the flow in [SECURITY.md](SECURITY.md).
-
----
-
-## 🗺 Roadmap
-- [x] High-fidelity dark mode "Command Center"
-- [x] Autonomous Hero Revenue Flow
-- [ ] Multi-channel sequence automation (LinkedIn/Twitter)
-- [ ] Enterprise RBAC and Audit Logging
-- [ ] Custom Agentic Tooling SDK
-
----
+- **Core Mode**: Enabled by default for community users.
+- **Pro Mode**: Enabled via `LEADFORGE_PRO_MODE=true`, unlocking high-performance logic and encrypted prompt registries.
 
 ## 🤝 Contributing
-
-We welcome senior-grade contributions. Please review [CONTRIBUTING.md](CONTRIBUTING.md) before opening a PR.
-
-## 📄 License
-
-This project is licensed under the **Apache License 2.0** - see the [LICENSE](LICENSE) file for details.
+We welcome contributions that improve the core engine while respecting the platform's security boundaries. Please review our [CONTRIBUTING.md](./CONTRIBUTING.md) and [SECURITY.md](./SECURITY.md) before submitting a PR.
 
 ---
 
-**Built with intensity by [Karan Dangi](https://www.linkedin.com/in/karan-dangi-4a672925b)**  
-*Applied AI Engineer | Scaling Revenue Engines*
+## 🗺 Pro Feature Roadmap
+We are rapidly scaling the platform's capabilities. Below is our current roadmap for Pro and Agency tiers:
+
+| Phase | Feature | Tier | Status |
+| :--- | :--- | :--- | :--- |
+| **Q2** | **Multi-Channel Sequence Engine** | Pro | ✅ Alpha |
+| **Q2** | **Native Deliverability Warmup** | Pro | 🛠 Development |
+| **Q3** | **White-Label Client Reporting** | Agency | 📅 Planned |
+| **Q3** | **Two-Way CRM Sync (HubSpot/SFDC)** | Pro | 📅 Planned |
+| **Q4** | **Custom Agentic Skill Builder** | Agency | 📅 Planned |
+
+*Built for the next generation of RevOps consultancies and scaling SaaS teams.*

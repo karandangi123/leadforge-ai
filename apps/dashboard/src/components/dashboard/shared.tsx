@@ -16,6 +16,7 @@ export function Panel({
   title,
   subtitle,
   children,
+  isPro,
 }: {
   icon: React.ComponentType<{ size?: number; className?: string }>;
   title: string;
@@ -73,6 +74,7 @@ export function QuickActionCard({
   href,
   title,
   detail,
+  isPro,
 }: {
   href: string;
   title: string;

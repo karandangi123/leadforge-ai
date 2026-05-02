@@ -1,0 +1,30 @@
+{
+  "name": "leadforge-monorepo",
+  "private": true,
+  "packageManager": "npm@11.11.0",
+  "workspaces": [
+
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:all": "turbo run dev",
+    "dev:worker": "npm run dev --workspace apps/worker",
+    "worker": "npm run worker --workspace apps/worker",
+    "vercel-build": "npm run db:generate --workspace @leadforge/db && npm run build --workspace apps/dashboard && rm -rf .next && cp -R apps/dashboard/.next .next",
+    "build:all": "npm run build --workspaces --if-present",
+    "lint:all": "npm run lint --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test:e2e": "npm run test:e2e --workspace apps/dashboard",
+    "test:jobs": "npm run test:jobs --workspace apps/dashboard",
+    "db:generate": "npm run db:generate --workspace @leadforge/db",
+    "db:push": "npm run db:push --workspace @leadforge/db",
+    "format": "prettier --write \"**/*.{ts,tsx,md}\""
+  },
+  "devDependencies": {
+    "prettier": "^3.0.0",
+    "tsx": "^4.20.6",
+    "turbo": "^2.0.0"
+  },
+  "dependencies": {}
+}

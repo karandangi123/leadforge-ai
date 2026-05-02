@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "public": true,
+  "framework": "nextjs",
+  "buildCommand": "npm run vercel-build",
+  "outputDirectory": ".next",
+  "installCommand": "npm install",
+  "ignoreCommand": "git diff --quiet HEAD^ HEAD .",
+  "regions": ["cle1"],
+  "env": {
+  }
+}

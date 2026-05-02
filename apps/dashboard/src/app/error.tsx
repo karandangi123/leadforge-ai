@@ -39,12 +39,12 @@ export default function GlobalError({
         >
           <RefreshCcw size={18} /> Re-initialise system
         </button>
-        <Link
-          href="/"
-          className="premium-button-secondary h-12 px-6"
+        <button
+          onClick={() => window.location.href = "/dashboard"}
+          className="premium-button-secondary h-12 px-6 flex items-center gap-2"
         >
           <Home size={18} /> Return to dashboard
-        </Link>
+        </button>
       </div>
       
       <p className="mt-12 text-xs font-bold uppercase tracking-widest text-[#9a9488]">LeadForge AI • Operator Safety Protocol</p>

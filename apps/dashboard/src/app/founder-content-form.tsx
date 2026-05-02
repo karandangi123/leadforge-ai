@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import {
   Newspaper,
   Sparkles,
@@ -8,7 +8,7 @@ import {
   Workflow,
 } from "lucide-react";
 
-import { runFounderContentEngine, type FounderContentState } from "@/app/actions";
+import { runFounderContentEngine, type FounderContentState } from "@/app/actions/tools";
 import { ToolJobStatus } from "@/components/dashboard/tool-job-status";
 import { useAsyncToolJob } from "@/lib/use-async-tool-job";
 
@@ -21,6 +21,7 @@ const initialState: FounderContentState = {
 export function FounderContentForm() {
   const [state, action, pending] = useActionState(runFounderContentEngine, initialState);
   const { job, result } = useAsyncToolJob(state);
+  const [activeTab, setActiveTab] = useState<"linkedin" | "x" | "system">("linkedin");
 
   return (
     <div className="space-y-6">
@@ -124,76 +125,95 @@ export function FounderContentForm() {
             </Panel>
           </section>
 
-          <section className="grid gap-6 xl:grid-cols-[1fr_1fr]">
-            <Panel title="LinkedIn posts" eyebrow="Long-form authority assets">
-              <div className="space-y-4">
-                {result.linkedinPosts.map((post) => (
-                  <article key={post.title} className="rounded-xl border border-[#e3dccd] bg-white p-4">
-                    <p className="text-sm font-black text-[#1e2521]">{post.title}</p>
-                    <p className="mt-2 text-xs font-black uppercase text-[#176b5d]">{post.hook}</p>
-                    <p className="mt-3 whitespace-pre-line text-sm leading-6 text-[#4f5a53]">{post.body}</p>
-                    <p className="mt-3 rounded-lg bg-[#f7f5ef] px-3 py-3 text-sm leading-6 text-[#4f5a53]">
-                      <span className="font-black text-[#1e2521]">CTA:</span> {post.cta}
-                    </p>
-                  </article>
-                ))}
-              </div>
-            </Panel>
+          <section className="space-y-6">
+            <div className="flex items-center gap-2 border-b border-[#d2cab7] pb-1">
+              {(["linkedin", "x", "system"] as const).map((tab) => (
+                <button
+                  key={tab}
+                  onClick={() => setActiveTab(tab)}
+                  className={`px-4 py-2 text-xs font-black uppercase tracking-widest transition-all ${
+                    activeTab === tab 
+                      ? "border-b-2 border-[#176b5d] text-[#176b5d]" 
+                      : "text-[#687169] hover:text-[#1e2521]"
+                  }`}
+                >
+                  {tab}
+                </button>
+              ))}
+            </div>
 
-            <Panel title="X posts" eyebrow="Short-form founder opinions">
-              <div className="space-y-4">
-                {result.xPosts.map((post) => (
-                  <article key={post.hook} className="rounded-xl border border-[#e3dccd] bg-white p-4">
-                    <p className="text-xs font-black uppercase text-[#176b5d]">{post.hook}</p>
-                    <p className="mt-3 whitespace-pre-line text-sm leading-6 text-[#4f5a53]">{post.post}</p>
-                  </article>
-                ))}
-              </div>
-            </Panel>
-          </section>
-
-          <section className="grid gap-6 xl:grid-cols-[1fr_1fr]">
-            <Panel title="Carousel outline" eyebrow="Turn one idea into a structured visual asset">
-              <MetricCard label="Asset" value={result.carouselOutline.title} />
-              <div className="mt-4">
-                <ListPanel title="Slides" items={result.carouselOutline.slides} />
-              </div>
-            </Panel>
-
-            <Panel title="Teardown script" eyebrow="Reusable breakdown format for audits and commentary">
-              <MetricCard label="Script" value={result.teardownScript.title} />
-              <div className="mt-4">
-                <ListPanel title="Sections" items={result.teardownScript.sections} />
-              </div>
-            </Panel>
-          </section>
-
-          <section className="grid gap-6 xl:grid-cols-[1.02fr_0.98fr]">
-            <Panel title="Weekly publishing calendar" eyebrow="How to operate the system each week">
-              <div className="space-y-3">
-                {result.weeklyCalendar.map((item) => (
-                  <div key={`${item.day}-${item.topic}`} className="rounded-xl border border-[#e3dccd] bg-white p-4">
-                    <div className="flex items-center justify-between gap-3">
-                      <p className="text-sm font-black text-[#1e2521]">{item.day}</p>
-                      <span className="rounded-full bg-[#f3faf7] px-2 py-1 text-[10px] font-black uppercase text-[#176b5d]">
-                        {item.assetType}
-                      </span>
-                    </div>
-                    <p className="mt-2 text-sm leading-6 text-[#4f5a53]">{item.topic}</p>
-                    <p className="mt-3 text-xs font-black uppercase text-[#687169]">Distribution</p>
-                    <p className="mt-1 text-sm leading-6 text-[#4f5a53]">{item.distribution}</p>
+            {activeTab === "linkedin" && (
+              <div className="grid gap-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                <Panel title="LinkedIn Authority Posts" eyebrow="Long-form expertise">
+                  <div className="space-y-4">
+                    {result.linkedinPosts.map((post) => (
+                      <article key={post.title} className="rounded-xl border border-[#e3dccd] bg-white p-4">
+                        <p className="text-sm font-black text-[#1e2521]">{post.title}</p>
+                        <p className="mt-2 text-[10px] font-black uppercase text-[#176b5d]">{post.hook}</p>
+                        <p className="mt-3 whitespace-pre-line text-sm leading-7 text-[#4f5a53]">{post.body}</p>
+                        <div className="mt-4 flex items-center justify-between border-t border-[#f7f5ef] pt-4">
+                           <span className="text-xs font-black text-[#1e2521]">CTA: {post.cta}</span>
+                           <button className="text-[10px] font-black uppercase text-[#176b5d]">Copy Post</button>
+                        </div>
+                      </article>
+                    ))}
                   </div>
-                ))}
+                </Panel>
               </div>
-            </Panel>
+            )}
 
-            <Panel title="Repurposing workflow" eyebrow="How to multiply one strong idea">
-              <ListPanel title="Workflow" items={result.repurposingWorkflow} />
-              <div className="mt-4 rounded-xl border border-[#e3dccd] bg-white p-4">
-                <p className="text-sm font-black text-[#1e2521]">{result.mode === "openai" ? "Live AI pass" : "Fallback demo pass"}</p>
-                <p className="mt-2 text-sm leading-6 text-[#4f5a53]">{result.model}</p>
+            {activeTab === "x" && (
+              <div className="grid gap-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                <Panel title="X (Twitter) Feed" eyebrow="Short-form bursts">
+                  <div className="space-y-4">
+                    {result.xPosts.map((post) => (
+                      <article key={post.hook} className="rounded-xl border border-[#e3dccd] bg-white p-4">
+                        <p className="text-[10px] font-black uppercase text-[#176b5d]">{post.hook}</p>
+                        <p className="mt-3 whitespace-pre-line text-sm leading-7 text-[#4f5a53]">{post.post}</p>
+                        <div className="mt-4 flex justify-end border-t border-[#f7f5ef] pt-4">
+                           <button className="text-[10px] font-black uppercase text-[#176b5d]">Copy Tweet</button>
+                        </div>
+                      </article>
+                    ))}
+                  </div>
+                </Panel>
               </div>
-            </Panel>
+            )}
+
+            {activeTab === "system" && (
+              <div className="grid gap-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                <div className="grid gap-6 xl:grid-cols-2">
+                  <Panel title="Weekly Publishing Rhythm" eyebrow="Operational calendar">
+                    <div className="space-y-3">
+                      {result.weeklyCalendar.map((item) => (
+                        <div key={`${item.day}-${item.topic}`} className="rounded-xl border border-[#e3dccd] bg-white p-4">
+                          <div className="flex items-center justify-between gap-3">
+                            <p className="text-sm font-black text-[#1e2521]">{item.day}</p>
+                            <span className="rounded-full bg-[#f3faf7] px-2 py-1 text-[10px] font-black uppercase text-[#176b5d]">
+                              {item.assetType}
+                            </span>
+                          </div>
+                          <p className="mt-2 text-sm text-[#4f5a53]">{item.topic}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </Panel>
+                  <div className="space-y-6">
+                    <Panel title="Carousel Concept" eyebrow="Visual asset">
+                      <p className="text-sm font-black text-[#1e2521]">{result.carouselOutline.title}</p>
+                      <ul className="mt-3 space-y-2">
+                        {result.carouselOutline.slides.map((slide, i) => (
+                          <li key={i} className="text-sm text-[#4f5a53]">Slide {i+1}: {slide}</li>
+                        ))}
+                      </ul>
+                    </Panel>
+                    <Panel title="Repurposing Loop" eyebrow="Multiplication system">
+                      <ListPanel title="Workflow" items={result.repurposingWorkflow} />
+                    </Panel>
+                  </div>
+                </div>
+              </div>
+            )}
           </section>
         </div>
       ) : null}

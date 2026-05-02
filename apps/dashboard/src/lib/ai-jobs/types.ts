@@ -60,6 +60,11 @@ const jobLabels: Record<JobKind, string> = {
   GROWTH_MODE: "Growth Mode",
   FOUNDER_CONTENT: "Founder Content",
   PROPOSAL_GENERATOR: "Proposal Generator",
+  SMS_SEND: "SMS Send",
+  LINKEDIN_MESSAGE: "LinkedIn Message",
+  DIALER_CALL: "Dialer Call",
+  SEQUENCE_STEP: "Sequence Step",
+  LEAD_ENRICHMENT: "Lead Enrichment",
 };
 
 const queuedRunKeys: Record<JobKind, string> = {
@@ -72,6 +77,11 @@ const queuedRunKeys: Record<JobKind, string> = {
   GROWTH_MODE: "growth-queued",
   FOUNDER_CONTENT: "content-queued",
   PROPOSAL_GENERATOR: "proposal-queued",
+  SMS_SEND: "sms-queued",
+  LINKEDIN_MESSAGE: "linkedin-queued",
+  DIALER_CALL: "call-queued",
+  SEQUENCE_STEP: "sequence-queued",
+  LEAD_ENRICHMENT: "enrich-queued",
 };
 
 const completedRunKeys: Record<JobKind, string> = {
@@ -84,6 +94,11 @@ const completedRunKeys: Record<JobKind, string> = {
   GROWTH_MODE: "growth",
   FOUNDER_CONTENT: "content",
   PROPOSAL_GENERATOR: "proposal",
+  SMS_SEND: "sms-sent",
+  LINKEDIN_MESSAGE: "linkedin-sent",
+  DIALER_CALL: "call-completed",
+  SEQUENCE_STEP: "sequence-step",
+  LEAD_ENRICHMENT: "enriched",
 };
 
 export function getAsyncJobLabel(kind: JobKind) {

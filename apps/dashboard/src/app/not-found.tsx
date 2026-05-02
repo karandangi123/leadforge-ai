@@ -18,7 +18,7 @@ export default function NotFound() {
       
       <div className="mt-10 flex flex-wrap gap-4">
         <Link
-          href="/"
+          href="/dashboard"
           className="premium-button-primary h-12 px-6"
         >
           <Home size={18} /> Dashboard

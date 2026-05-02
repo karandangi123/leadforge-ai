@@ -4,7 +4,11 @@ import { revalidatePath } from "next/cache";
 import { redirect, unstable_rethrow } from "next/navigation";
 import { z } from "zod";
 import { getPrisma, hasDatabaseUrl, resetPrisma } from "@leadforge/db";
+import { auth } from "@/auth";
+import { syncWorkspaceGmailData } from "@/lib/gmail-workspace-sync";
+import { getActiveWorkspace } from "@/lib/workspace";
 import { saveWorkspaceBranding } from "@/lib/workspace-branding";
+
 import { deleteTraceSavedView, saveTraceSavedView } from "@/lib/workspace-ops-memory";
 import { execFile } from "node:child_process";
 import { readFile, writeFile } from "node:fs/promises";
@@ -63,11 +67,8 @@ export async function saveWorkspacePlaybook(formData: FormData) {
 
   try {
     const prisma = getPrisma();
-    const workspace = await prisma.workspace.upsert({
-      where: { slug: "demo" },
-      update: {},
-      create: { name: "Demo Workspace", slug: "demo" },
-    });
+    const workspace = await getActiveWorkspace();
+
 
     await prisma.workspacePlaybook.upsert({
       where: { workspaceId: workspace.id },
@@ -92,7 +93,7 @@ export async function saveWorkspacePlaybook(formData: FormData) {
       },
     });
 
-    await saveWorkspaceBranding("demo", {
+    await saveWorkspaceBranding(workspace.slug, {
       brandName: parsed.data.brandName,
       tagLine: parsed.data.tagLine,
       primaryColor: parsed.data.primaryColor,
@@ -122,11 +123,8 @@ export async function saveGrowthModeToPlaybook(formData: FormData) {
   }
 
   const prisma = getPrisma();
-  const workspace = await prisma.workspace.upsert({
-    where: { slug: "demo" },
-    update: {},
-    create: { name: "Demo Workspace", slug: "demo" },
-  });
+  const workspace = await getActiveWorkspace();
+
 
   const product = String(formData.get("product") ?? "");
   const idealCustomer = String(formData.get("idealCustomer") ?? "");
@@ -181,7 +179,9 @@ export async function createTraceSavedView(formData: FormData) {
     redirect("/?view=traces&run=invalid");
   }
 
-  await saveTraceSavedView("demo", {
+  const workspace = await getActiveWorkspace();
+  await saveTraceSavedView(workspace.slug, {
+
     name: parsed.data.name,
     search: parsed.data.search || "",
     agent: parsed.data.agent,
@@ -199,7 +199,9 @@ export async function removeTraceSavedView(formData: FormData) {
     redirect("/?view=traces&run=invalid");
   }
 
-  await deleteTraceSavedView("demo", viewId);
+  const workspace = await getActiveWorkspace();
+  await deleteTraceSavedView(workspace.slug, viewId);
+
   revalidatePath("/");
   redirect("/?view=traces&run=view-removed");
 }
@@ -249,15 +251,31 @@ export async function disconnectGoogleConnection() {
 
   try {
     const prisma = getPrisma();
-    const workspace = await prisma.workspace.findUnique({
-      where: { slug: "demo" },
-    });
+    const workspace = await getActiveWorkspace();
+
 
     if (workspace) {
+      await prisma.workspaceGmailSnapshot.deleteMany({
+        where: {
+          workspaceId: workspace.id,
+        },
+      });
       await prisma.workspaceIntegrationConnection.deleteMany({
         where: {
           workspaceId: workspace.id,
           provider: "GOOGLE_GMAIL",
+        },
+      });
+      await prisma.auditLog.create({
+        data: {
+          workspaceId: workspace.id,
+          action: "INTEGRATION_DISCONNECTED",
+          entityType: "WORKSPACE_INTEGRATION_CONNECTION",
+          entityId: "GOOGLE_GMAIL",
+          metadata: {
+            provider: "google",
+            source: "setup_recovery_center",
+          },
         },
       });
     }
@@ -267,6 +285,30 @@ export async function disconnectGoogleConnection() {
   } catch (error) {
     unstable_rethrow(error);
     redirect("/?view=setup&run=gmail-oauth-failed");
+  }
+}
+
+export async function refreshGoogleWorkspaceData() {
+  if (!hasDatabaseUrl()) {
+    redirect("/?view=setup&run=db-not-configured");
+  }
+
+  try {
+    const session = await auth();
+    const prisma = getPrisma();
+    const workspace = await getActiveWorkspace();
+
+    await syncWorkspaceGmailData(prisma, {
+      workspaceId: workspace.id,
+      userId: session?.user?.id ?? null,
+      trigger: "manual_refresh",
+    });
+
+    revalidatePath("/");
+    redirect("/?view=setup&run=gmail-sync-refreshed");
+  } catch (error) {
+    unstable_rethrow(error);
+    redirect("/?view=setup&run=gmail-sync-failed");
   }
 }
 

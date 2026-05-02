@@ -6,3 +6,5 @@ export * from "./actions/tools";
 export * from "./actions/proposals";
 export * from "./actions/integrations";
 export * from "./actions/outreach";
+export * from "./actions/multichannel";
+export * from "./actions/enrichment";

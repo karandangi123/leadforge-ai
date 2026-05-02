@@ -3,7 +3,8 @@
 import { useActionState, useRef } from "react";
 import { BriefcaseBusiness, Download, FileOutput, Printer, ShieldCheck, Sparkles, Wallet } from "lucide-react";
 
-import { runProposalGenerator, saveProposalMemory, updateProposalMemoryOutcome, type ProposalGeneratorState } from "@/app/actions";
+import { runProposalGenerator, type ProposalGeneratorState } from "@/app/actions/tools";
+import { saveProposalMemory, updateProposalMemoryOutcome } from "@/app/actions/proposals";
 import { ToolJobStatus } from "@/components/dashboard/tool-job-status";
 import type { WorkspacePlaybookState } from "@/lib/leads";
 import { getProposalPricingLayout, getProposalTemplate, proposalServiceLineTemplates } from "@/lib/proposal-templates";
@@ -188,7 +189,7 @@ export function ProposalGeneratorForm({
       {job ? <ToolJobStatus job={job} title="Proposal generator job" /> : null}
 
       {result ? (
-            <div className="space-y-6">
+        <div className="space-y-6">
           <section className="proposal-no-print rounded-2xl border border-[#d2cab7] bg-[#fffdf8] p-5">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
               <div>
@@ -207,7 +208,7 @@ export function ProposalGeneratorForm({
             </div>
           </section>
 
-            <div ref={exportRef} className="space-y-6 proposal-print-root">
+          <div ref={exportRef} className="space-y-6 proposal-print-root">
             <section className="proposal-page-break rounded-[28px] border p-6 text-white shadow-[0_18px_50px_rgba(45,38,20,0.14)]" style={{ borderColor: branding.accentColor, background: `linear-gradient(135deg, ${branding.primaryColor}, ${branding.secondaryColor})` }}>
               <span className="inline-flex items-center gap-2 rounded-full border border-white/30 px-3 py-2 text-[11px] font-black uppercase tracking-[0.2em]">
                 <FileOutput size={14} /> LeadForge AI proposal packet
@@ -217,7 +218,7 @@ export function ProposalGeneratorForm({
               <div className="mt-6 grid gap-3 sm:grid-cols-3">
                 <ExportChip label="Brand" value={branding.brandName} />
                 <ExportChip label="Model" value={result.model ?? "demo-v1"} />
-                <ExportChip label="Package type" value={result.mode === "openai" ? "Live AI proposal" : "Fallback proposal"} />
+                <ExportChip label="Package type" value={result.mode === "fallback" ? "Fallback proposal" : "Live AI proposal"} />
                 <ExportChip label="Template" value={result.templateName} />
               </div>
             </section>
@@ -253,22 +254,53 @@ export function ProposalGeneratorForm({
                 </div>
               </Panel>
 
-              <Panel title="Pricing options" eyebrow="Commercial packaging">
-                <div className="space-y-4">
-                  {result.pricingOptions.map((option) => (
-                    <div key={option.name} className="rounded-xl border border-[#e3dccd] bg-white p-4">
-                      <div className="flex items-center justify-between gap-3">
-                        <p className="text-sm font-black text-[#1e2521]">{option.name}</p>
-                        <span className="text-lg font-black text-[#176b5d]">{option.price}</span>
-                      </div>
-                      <p className="mt-2 text-sm leading-6 text-[#4f5a53]">{option.bestFor}</p>
-                      <div className="mt-3">
-                        <ListPanel title="Includes" items={option.includes} />
+              <Panel title="Commercial options" eyebrow="Tiered pricing packages">
+                <div className="grid gap-4 md:grid-cols-3">
+                  {result.pricingOptions.map((option, i) => (
+                    <div 
+                      key={option.name} 
+                      className={`relative rounded-2xl border p-5 shadow-sm transition-all hover:shadow-md ${
+                        i === 1 ? "border-[#176b5d] bg-[#f3faf7] ring-1 ring-[#176b5d]" : "border-[#e3dccd] bg-white"
+                      }`}
+                    >
+                      {i === 1 && (
+                        <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-[#176b5d] px-3 py-1 text-[9px] font-black uppercase tracking-widest text-white">
+                          Recommended
+                        </span>
+                      )}
+                      <p className="text-sm font-black text-[#1e2521]">{option.name}</p>
+                      <p className="mt-3 text-2xl font-black text-[#176b5d]">{option.price}</p>
+                      <p className="mt-2 text-xs font-medium leading-5 text-[#4f5a53]">{option.bestFor}</p>
+                      <div className="mt-4 border-t border-[#f7f5ef] pt-4">
+                        <ul className="space-y-2">
+                          {option.includes.map((item) => (
+                            <li key={item} className="flex items-start gap-2 text-xs leading-5 text-[#4f5a53]">
+                              <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[#176b5d]" />
+                              {item}
+                            </li>
+                          ))}
+                        </ul>
                       </div>
                     </div>
                   ))}
                 </div>
               </Panel>
+            </section>
+
+            <section className="proposal-page-break rounded-[28px] border-2 border-dashed border-[#176b5d] bg-[#f3faf7] p-8 text-center">
+               <Sparkles size={32} className="mx-auto text-[#176b5d]" />
+               <h2 className="mt-4 text-2xl font-black text-[#1e2521]">The Future State</h2>
+               <p className="mx-auto mt-4 max-w-2xl text-base leading-8 text-[#4f5a53]">
+                 By the end of this engagement, {result.clientName} will have a validated {result.serviceLine} engine producing predictable {result.niche} pipeline.
+               </p>
+               <div className="mt-8 flex flex-wrap justify-center gap-6">
+                  {result.goals.slice(0, 3).map((goal) => (
+                    <div key={goal} className="flex items-center gap-2">
+                      <ShieldCheck size={18} className="text-[#176b5d]" />
+                      <span className="text-sm font-black text-[#1e2521]">{goal}</span>
+                    </div>
+                  ))}
+               </div>
             </section>
 
             <section className="proposal-page-break grid gap-6 xl:grid-cols-[1fr_1fr]">

@@ -3,6 +3,7 @@ import { serializeAsyncJob, type AsyncJobSnapshot } from "./ai-jobs/types";
 import { readWorkspaceOpsMemory, type ProposalMemoryRecord, type TraceSavedView } from "./workspace-ops-memory";
 import { defaultProposalBranding, readWorkspaceBranding, type ProposalBrandingProfile } from "./workspace-branding";
 import { getAiRuntimeMode, type RuntimeMode } from "./runtime-mode";
+import { getActiveWorkspace } from "./workspace";
 
 export type DashboardLead = {
   id: string;
@@ -24,6 +25,8 @@ export type DashboardLead = {
   notes: string | null;
   tags: string[];
   hasPendingApproval: boolean;
+  slaStatus: "healthy" | "warning" | "breached";
+  slaDetail: string;
   isSeed?: boolean;
 };
 
@@ -402,6 +405,8 @@ const seededLeads: DashboardLead[] = [
     notes: "Strong fit for conversion-led healthcare ops outreach.",
     tags: ["healthcare", "high-fit", "needs-approval"],
     hasPendingApproval: true,
+    slaStatus: "healthy",
+    slaDetail: "Seeded data",
     isSeed: true,
   },
   {
@@ -424,6 +429,8 @@ const seededLeads: DashboardLead[] = [
     notes: "Public-sector workflow with clear operational buyer.",
     tags: ["public-sector", "research"],
     hasPendingApproval: false,
+    slaStatus: "healthy",
+    slaDetail: "Seeded data",
     isSeed: true,
   },
   {
@@ -446,6 +453,8 @@ const seededLeads: DashboardLead[] = [
     notes: "Below-threshold audit score means stronger specificity is needed.",
     tags: ["logistics", "copy-revision"],
     hasPendingApproval: false,
+    slaStatus: "healthy",
+    slaDetail: "Seeded data",
     isSeed: true,
   },
   {
@@ -468,6 +477,8 @@ const seededLeads: DashboardLead[] = [
     notes: "High-confidence AI tooling account with ready-to-send assets.",
     tags: ["ai", "ready"],
     hasPendingApproval: false,
+    slaStatus: "healthy",
+    slaDetail: "Seeded data",
     isSeed: true,
   },
   {
@@ -490,6 +501,8 @@ const seededLeads: DashboardLead[] = [
     notes: "Imported from operator-provided clinic prospect sheet.",
     tags: ["csv", "multi-location"],
     hasPendingApproval: false,
+    slaStatus: "healthy",
+    slaDetail: "Seeded data",
     isSeed: true,
   },
   {
@@ -512,6 +525,8 @@ const seededLeads: DashboardLead[] = [
     notes: "Positive reply received after approved outreach.",
     tags: ["won-path", "devtools"],
     hasPendingApproval: false,
+    slaStatus: "healthy",
+    slaDetail: "Seeded data",
     isSeed: true,
   },
   {
@@ -534,6 +549,8 @@ const seededLeads: DashboardLead[] = [
     notes: "Poor fit and weak site fundamentals made outreach low-confidence.",
     tags: ["low-fit", "rejected"],
     hasPendingApproval: false,
+    slaStatus: "healthy",
+    slaDetail: "Seeded data",
     isSeed: true,
   },
 ];
@@ -599,6 +616,8 @@ export async function getDashboardLeads(): Promise<LeadDataState> {
         evaluations: true,
         outcomeEvents: true,
         followUpReminders: { orderBy: { dueAt: "asc" } },
+        // @ts-ignore - Prisma types may be stale in monorepo cache
+        lastStageChangedAt: true,
       },
     });
     const workspace = await prisma.workspace.findUnique({
@@ -615,7 +634,7 @@ export async function getDashboardLeads(): Promise<LeadDataState> {
 
     const mappedLeads =
       leads.length > 0
-        ? leads.map((lead) =>
+        ? (leads as any[]).map((lead) =>
             mapDashboardLead({
               id: lead.id,
               company: lead.company,
@@ -634,6 +653,7 @@ export async function getDashboardLeads(): Promise<LeadDataState> {
               notes: lead.notes,
               tags: lead.tags,
               approvals: lead.approvals,
+              lastStageChangedAt: lead.lastStageChangedAt,
             }),
           )
         : seededLeads;
@@ -647,12 +667,12 @@ export async function getDashboardLeads(): Promise<LeadDataState> {
           : "Connected to Postgres. Add your first lead to replace demo data.",
       playbook: workspace?.playbook ? mapPlaybook(workspace.playbook, branding) : { ...emptyPlaybook, branding },
       discovery: workspace?.discoveryRuns[0] ? mapDiscovery(workspace.discoveryRuns[0]) : emptyDiscovery,
-      agentAnalytics: leads.length > 0 ? getAgentAnalytics(leads) : seededAgentAnalytics,
-      traceViewer: leads.length > 0 ? buildTraceViewerFromDb(leads) : seededTraceViewer,
-      qualityCenter: leads.length > 0 ? buildQualityCenterFromDb(leads) : seededQualityCenter,
-      outcomeSummary: leads.length > 0 ? getOutcomeSummary(leads.flatMap((lead) => lead.outcomeEvents)) : seededOutcomeSummary,
-      approvalQueue: leads.length > 0 ? buildApprovalQueueFromDb(leads) : seededApprovalQueue,
-      recentActivitySummary: leads.length > 0 ? buildRecentActivityFromDb(leads) : seededRecentActivity,
+      agentAnalytics: leads.length > 0 ? getAgentAnalytics(leads as any) : seededAgentAnalytics,
+      traceViewer: leads.length > 0 ? buildTraceViewerFromDb(leads as any) : seededTraceViewer,
+      qualityCenter: leads.length > 0 ? buildQualityCenterFromDb(leads as any) : seededQualityCenter,
+      outcomeSummary: leads.length > 0 ? getOutcomeSummary(leads.flatMap((lead: any) => lead.outcomeEvents)) : seededOutcomeSummary,
+      approvalQueue: leads.length > 0 ? buildApprovalQueueFromDb(leads as any) : seededApprovalQueue,
+      recentActivitySummary: leads.length > 0 ? buildRecentActivityFromDb(leads as any) : seededRecentActivity,
       proposalMemory: opsMemory.proposalMemory.length > 0 ? opsMemory.proposalMemory : seededProposalMemory,
       traceSavedViews: opsMemory.traceSavedViews.length > 0 ? opsMemory.traceSavedViews : seededTraceSavedViews,
     });
@@ -737,6 +757,7 @@ export async function getLeadDetail(leadId: string): Promise<LeadDetailState | n
       notes: lead.notes,
       tags: lead.tags,
       approvals: lead.approvals,
+      lastStageChangedAt: (lead as any).lastStageChangedAt,
     });
 
     const research = lead.researchRuns.map((run) => ({
@@ -1116,6 +1137,31 @@ function buildQualityCenterFromDb(
   };
 }
 
+function calculateSLAHealth(status: LeadStatus, lastChanged: Date): { status: "healthy" | "warning" | "breached"; detail: string } {
+  const now = new Date();
+  const diffHours = (now.getTime() - lastChanged.getTime()) / (1000 * 60 * 60);
+
+  const thresholds: Record<LeadStatus, { warning: number; breached: number }> = {
+    NEW: { warning: 12, breached: 24 },
+    RESEARCH: { warning: 24, breached: 48 },
+    AUDIT: { warning: 24, breached: 48 },
+    DRAFTED: { warning: 12, breached: 24 },
+    APPROVAL: { warning: 8, breached: 16 },
+    READY: { warning: 48, breached: 96 },
+    SYNCED: { warning: 1000, breached: 2000 },
+    REJECTED: { warning: 1000, breached: 2000 },
+  };
+
+  const t = thresholds[status];
+  if (diffHours >= t.breached) {
+    return { status: "breached", detail: `${Math.round(diffHours)}h stagnant (Breached)` };
+  }
+  if (diffHours >= t.warning) {
+    return { status: "warning", detail: `${Math.round(diffHours)}h stagnant (Warning)` };
+  }
+  return { status: "healthy", detail: "On track" };
+}
+
 function mapDashboardLead(input: {
   id: string;
   company: string;
@@ -1134,8 +1180,11 @@ function mapDashboardLead(input: {
   notes: string | null;
   tags: unknown;
   approvals: Array<{ status: string }>;
+  lastStageChangedAt: Date;
 }): DashboardLead {
   const owner = input.ownerName?.trim() || ownerByStatus[input.status];
+  const sla = calculateSLAHealth(input.status, input.lastStageChangedAt);
+  
   return {
     id: input.id,
     company: input.company,
@@ -1156,6 +1205,8 @@ function mapDashboardLead(input: {
     notes: input.notes,
     tags: readStringList(input.tags),
     hasPendingApproval: input.approvals.some((approval) => approval.status === "PENDING"),
+    slaStatus: sla.status,
+    slaDetail: sla.detail,
   };
 }
 

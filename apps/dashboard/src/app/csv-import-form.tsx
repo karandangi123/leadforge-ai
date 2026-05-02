@@ -3,7 +3,7 @@
 import { useActionState } from "react";
 import { Upload } from "lucide-react";
 
-import { importLeadsCsv, type CsvImportState } from "@/app/actions";
+import { importLeadsCsv, type CsvImportState } from "@/app/actions/leads";
 
 const initialCsvImportState: CsvImportState = {
   message: "",

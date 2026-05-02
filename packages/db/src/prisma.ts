@@ -1,8 +1,10 @@
 import { PrismaPg } from "@prisma/adapter-pg";
 
-import { ApprovalStatus, DraftChannel, JobKind, JobStatus, LeadStatus, PrismaClient } from "./generated/prisma";
+import { ApprovalStatus, DraftChannel, JobKind, JobStatus, LeadStatus, PromptKind, AgentRunStatus, PrismaClient } from "./generated/prisma";
 
-export { ApprovalStatus, DraftChannel, JobKind, JobStatus, LeadStatus, PrismaClient };
+
+
+export { ApprovalStatus, DraftChannel, JobKind, JobStatus, LeadStatus, PromptKind, AgentRunStatus, PrismaClient };
 
 const globalForPrisma = globalThis as unknown as {
   prisma?: PrismaClient;

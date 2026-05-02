@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "public": true,
+  "framework": "nextjs",
+  "buildCommand": "npx turbo run build --filter=dashboard",
+  "outputDirectory": "apps/dashboard/.next",
+  "installCommand": "npm install",
+  "ignoreCommand": "git diff --quiet HEAD^ HEAD .",
+  "regions": ["cle1"],
+  "env": {
+    "TURBO_TEAM": "leadforge",
+    "TURBO_TOKEN": "demo"
+  }
+}

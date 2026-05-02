@@ -2,20 +2,39 @@
 
 We welcome focused contributions that make the workflow more trustworthy, easier to run locally, and easier to extend.
 
-## Workflow
-1. Fork the repo.
-2. Create a short-lived branch from `main`.
-3. Keep the change scoped to one concern when possible.
-4. Run the local quality checks before opening a PR.
-5. Submit a PR to `main`.
+## Branching Strategy
 
-## Repository layout
+We follow a professional branching model to ensure stability:
 
-- `apps/dashboard`: the shipped Next.js 16 App Router application
-- `packages/agents`: AI runtime and structured outputs
-- `packages/evals`: evaluation logic for agent outputs
-- `packages/integrations`: provider-facing adapters such as Gmail
-- `packages/db`: Prisma schema, generated client, and DB helpers
+- **`main`**: The stable, production-ready branch. Only merges from `release/*` or `hotfix/*` are allowed.
+- **`dev`**: The active development branch. All feature branches should branch from and merge back into `dev`.
+- **`feature/*`**: New features or improvements.
+- **`fix/*`**: Bug fixes.
+- **`release/*`**: Preparation for a new production release.
+- **`hotfix/*`**: Urgent production fixes.
+
+**Note**: Direct commits to `main` and `dev` are blocked. All changes must go through a Pull Request with at least one approval.
+
+## Repository Layout
+
+- `apps/dashboard`: The primary Next.js 16 application (Open Source UI).
+- `packages/agents`: AI runtime and structured outputs (Open Source Core).
+- `packages/evals`: Evaluation logic for agent outputs (Open Source).
+- `packages/integrations`: Provider adapters like Gmail (Open Source).
+- `packages/db`: Prisma schema and database helpers (Open Source).
+- `packages/billing`: Proprietary subscription and pricing logic (**Protected**).
+
+## Contribution Boundaries
+
+### What you CAN contribute:
+- UI improvements to `apps/dashboard`.
+- New AI agents or prompt optimizations in `packages/agents`.
+- Integration adapters in `packages/integrations`.
+- Bug fixes across the open-source packages.
+
+### What you SHOULD NOT modify:
+- **`packages/billing`**: This package contains proprietary logic. Changes here are strictly handled by the core team.
+- **Auth Logic**: Sensitive authentication flows in `src/auth.ts` require deep security review.
 
 ## Local checks
 

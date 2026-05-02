@@ -1,7 +1,7 @@
 export type RuntimeMode = "live" | "degraded" | "demo";
 
 export function hasRedisUrl() {
-  return Boolean(process.env.REDIS_URL);
+  return Boolean(process.env.UPSTASH_REDIS_URL || process.env.REDIS_URL);
 }
 
 export function getAiRuntimeMode(): RuntimeMode {

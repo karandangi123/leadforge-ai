@@ -2,7 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect, unstable_rethrow } from "next/navigation";
+import { auth } from "@/auth";
 import { getPrisma, hasDatabaseUrl, LeadStatus } from "@leadforge/db";
+
 import { createGmailDraftFromConnection } from "@leadforge/integrations";
 import { getDefaultWorkspaceGoogleConnection } from "@/lib/integration-connections";
 
@@ -11,9 +13,17 @@ export async function createRealGmailDraft(formData: FormData) {
   const outreachId = String(formData.get("outreachId") ?? "");
   let connectionId: string | null = null;
 
+  const session = await auth();
+  if (session?.user?.id === "demo-user") {
+    revalidatePath(`/leads/${leadId}`);
+    revalidatePath("/");
+    redirect(`/leads/${leadId}?run=draft-synced`);
+  }
+
   if (!hasDatabaseUrl()) {
     redirect(`/leads/${leadId}?run=db-not-configured`);
   }
+
 
   try {
     const prisma = getPrisma();

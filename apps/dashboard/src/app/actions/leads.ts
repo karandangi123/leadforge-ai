@@ -4,7 +4,10 @@ import { revalidatePath } from "next/cache";
 import { redirect, unstable_rethrow } from "next/navigation";
 import { z } from "zod";
 import { getPrisma, hasDatabaseUrl, LeadStatus } from "@leadforge/db";
+import { getActiveWorkspace } from "@/lib/workspace";
 import { createSampleLeadRecord } from "@/lib/leads";
+import { SecurityService } from "@/lib/security";
+
 import { processOutcomeLearning } from "@/lib/learning-loop";
 
 const addLeadSchema = z.object({
@@ -64,14 +67,8 @@ export async function addLead(formData: FormData) {
   }
 
   const prisma = getPrisma();
-  const workspace = await prisma.workspace.upsert({
-    where: { slug: "demo" },
-    update: {},
-    create: {
-      name: "Demo Workspace",
-      slug: "demo",
-    },
-  });
+  const workspace = await getActiveWorkspace();
+
 
   const duplicateResult = await classifyDuplicateLead(prisma, workspace.id, {
     company: parsed.data.company,
@@ -84,7 +81,7 @@ export async function addLead(formData: FormData) {
     redirect("/?lead=duplicate#dashboard");
   }
 
-  await prisma.lead.create({
+  const lead = await prisma.lead.create({
     data: {
       workspaceId: workspace.id,
       company: parsed.data.company,
@@ -98,10 +95,22 @@ export async function addLead(formData: FormData) {
       status: LeadStatus.RESEARCH,
       source: "manual",
       nextAction: "Run AI research",
-      agentTraces: {
-        create: {
-          agentName: "Lead Intake",
-          status: "SUCCEEDED",
+    },
+  });
+
+  await SecurityService.recordAuditLog({
+    workspaceId: workspace.id,
+    action: "LEAD_CREATE",
+    entityType: "Lead",
+    entityId: lead.id,
+    metadata: { company: lead.company, source: lead.source },
+  });
+
+  await prisma.agentTrace.create({
+    data: {
+      leadId: lead.id,
+      agentName: "Lead Intake",
+      status: "SUCCEEDED",
           input: {
             company: parsed.data.company,
             website: parsed.data.website || null,
@@ -111,9 +120,7 @@ export async function addLead(formData: FormData) {
             nextAction: "Run AI research",
           },
         },
-      },
-    },
-  });
+      });
 
   revalidatePath("/");
   redirect("/?lead=created#dashboard");
@@ -138,11 +145,8 @@ export async function createLeadFromInsight(formData: FormData) {
 
   try {
     const prisma = getPrisma();
-    const workspace = await prisma.workspace.upsert({
-      where: { slug: "demo" },
-      update: {},
-      create: { name: "Demo Workspace", slug: "demo" },
-    });
+    const workspace = await getActiveWorkspace();
+
 
     const source = String(formData.get("source") ?? "insight");
 
@@ -272,10 +276,22 @@ export async function moveLeadStage(formData: FormData) {
       data: {
         status,
         manualStatusReason,
-        agentTraces: {
-          create: {
-            agentName: "Operator Override",
-            status: "SUCCEEDED",
+      },
+    });
+
+    await SecurityService.recordAuditLog({
+      workspaceId: lead.workspaceId,
+      action: "LEAD_STAGE_CHANGE",
+      entityType: "Lead",
+      entityId: leadId,
+      metadata: { from: lead.status, to: status, reason: manualStatusReason },
+    });
+
+    await prisma.agentTrace.create({
+      data: {
+        leadId,
+        agentName: "Operator Override",
+        status: "SUCCEEDED",
             input: {
               leadId,
               fromStatus: lead.status,
@@ -287,9 +303,7 @@ export async function moveLeadStage(formData: FormData) {
               humanNextAction: lead.humanNextAction,
             },
           },
-        },
-      },
-    });
+        });
   } catch (error) {
     unstable_rethrow(error);
     redirect(`/leads/${leadId}?run=db-unavailable`);
@@ -580,14 +594,8 @@ export async function importLeadsCsv(_prevState: CsvImportState, formData: FormD
 
   try {
     const prisma = getPrisma();
-    const workspace = await prisma.workspace.upsert({
-      where: { slug: "demo" },
-      update: {},
-      create: {
-        name: "Demo Workspace",
-        slug: "demo",
-      },
-    });
+    const workspace = await getActiveWorkspace();
+
 
     const header = rows[0].map((item) => item.trim());
     const results: CsvImportState["results"] = [];

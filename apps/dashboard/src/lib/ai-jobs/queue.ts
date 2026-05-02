@@ -8,13 +8,22 @@ const globalForQueues = globalThis as unknown as {
 };
 
 export function getQueueConnection() {
-  if (!process.env.REDIS_URL) {
-    throw new Error("REDIS_URL is not configured.");
+  const redisUrl = process.env.UPSTASH_REDIS_URL || process.env.REDIS_URL;
+  if (!redisUrl) {
+    throw new Error("Redis connection string is not configured.");
   }
 
   if (!globalForQueues.aiJobRedis) {
-    globalForQueues.aiJobRedis = new IORedis(process.env.REDIS_URL, {
+    globalForQueues.aiJobRedis = new IORedis(redisUrl, {
       maxRetriesPerRequest: null,
+      enableReadyCheck: false,
+      reconnectOnError: (err) => {
+        const targetError = "READONLY";
+        if (err.message.includes(targetError)) {
+          return true;
+        }
+        return false;
+      },
     });
   }
 

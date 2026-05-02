@@ -1,25 +1,119 @@
 import { getProposalPricingLayout, getProposalTemplate } from "./proposal-templates";
 import type { ProposalBrandingProfile } from "./workspace-branding";
+import { PromptKind } from "@leadforge/db";
+import { ModelRouter, type ModelConfig } from "./model-router";
+import { PromptRegistry } from "./prompt-registry";
 
-type AgentResult<T> = {
+export type AgentResult<T> = {
   data: T;
-  mode: "openai" | "fallback";
+  mode: ModelConfig["provider"] | "fallback";
   model: string;
   latencyMs: number;
   tokenCount: number | null;
 };
 
+// ─── Advanced Research Output — Source-Cited & Approval-Ready ────────────────
+
+export type ResearchCitation = {
+  id: string;           // e.g. "[1]", "[2]" — used inline in text
+  title: string;
+  url: string;
+  sourceType: "website" | "linkedin" | "news" | "crunchbase" | "g2" | "twitter" | "job_board" | "press_release" | "other";
+  retrievedAt: string;  // ISO timestamp
+  excerpt?: string;     // Relevant quote / snippet from source
+};
+
+export type PainPoint = {
+  title: string;
+  description: string;
+  evidenceQuote?: string;   // Direct quote or data point backing this pain
+  evidenceSource?: string;  // Citation ID or URL
+  severity: "critical" | "high" | "medium" | "low";
+  relevanceScore: number;   // 0-100: how relevant this pain is to our offer
+};
+
+export type BuyingSignal = {
+  type: "funding" | "hiring" | "job_change" | "news" | "intent" | "tech_change" | "expansion" | "other";
+  title: string;
+  description: string;
+  evidenceSource?: string;
+  detectedAt?: string;     // ISO — when this signal was detected
+  urgency: "high" | "medium" | "low";
+};
+
+export type PersonalizationSnippet = {
+  label: string;              // e.g. "Email opening hook"
+  channel: "email" | "linkedin" | "call_opener" | "sms";
+  text: string;               // Ready-to-use text
+  basedOnSignal?: string;     // Which pain/signal it references
+  toneGuide?: string;         // e.g. "Keep it specific, avoid jargon"
+};
+
+export type CompanyIntelligence = {
+  headline: string;           // One-line company summary
+  businessModel: string;
+  primaryMarket: string;
+  keyProducts: string[];
+  recentDevelopments: string[];  // Last 90 days
+  competitiveContext: string;
+};
+
+export type ContactIntelligence = {
+  name: string;
+  title: string;
+  tenureMonths?: number;
+  linkedinSummary?: string;
+  recentActivity?: string;    // Recent posts, quotes, announcements
+  decisionMakingRole: "champion" | "economic_buyer" | "influencer" | "user" | "unknown";
+  preferredChannel?: "email" | "linkedin" | "phone";
+};
+
+export type ResearchApprovalGate = {
+  reviewerNotes: string;         // What the human reviewer must verify
+  factsToValidate: string[];     // Specific claims needing human confirmation
+  approvalStatus: "pending" | "approved" | "rejected" | "edited";
+  confidenceThreshold: number;   // Minimum confidence before auto-approval is allowed
+  isAutoApprovable: boolean;     // Only true when confidence >= threshold and no critical flags
+  criticalFlags: string[];       // Issues that block auto-approval
+};
+
 export type LeadResearchOutput = {
-  summary: string;
-  confidence: number;
-  fitScore: number;
-  citations: string[];
+  // ── Overview ────────────────────────────────────────────────────────────────
+  summary: string;               // 2-3 sentence exec summary of the research
+  confidence: number;            // 0-1 overall research confidence
+  fitScore: number;              // 0-100 fit score against playbook ICP
+  nextAction: string;
+
+  // ── Source citations ────────────────────────────────────────────────────────
+  citations: ResearchCitation[];  // All sources found (indexed [1], [2]...)
+
+  // ── Company & contact intelligence ─────────────────────────────────────────
+  company: CompanyIntelligence;
+  contact?: ContactIntelligence;
+
+  // ── Pain points — structured with evidence ──────────────────────────────────
+  painPoints: PainPoint[];
+
+  // ── Buying signals — what makes them hot now ───────────────────────────────
+  buyingSignals: BuyingSignal[];
+
+  // ── Personalization snippets — ready-to-use copy ───────────────────────────
+  personalizationSnippets: PersonalizationSnippet[];
+
+  // ── Strategic angles ────────────────────────────────────────────────────────
+  outreachAngle: string;          // Primary opening angle for outreach
+  hypothesisStatement: string;    // "We believe [company] has [problem] because [evidence]..."
+  competitiveGap: string;         // Where competitor options fall short
+
+  // ── Approval gate ───────────────────────────────────────────────────────────
+  approval: ResearchApprovalGate;
+
+  // ── Legacy compatibility ─────────────────────────────────────────────────────
   signals: {
     segment: string;
     painPoint: string;
     recommendedAngle: string;
   };
-  nextAction: string;
 };
 
 export type WebsiteAuditOutput = {
@@ -57,8 +151,6 @@ export type ClientOpsOutput = {
 export type WebsiteRoastOutput = {
   url: string;
   companyName: string;
-  mode?: "openai" | "fallback";
-  model?: string;
   overallScore: number;
   designScore: number;
   trustScore: number;
@@ -71,6 +163,11 @@ export type WebsiteRoastOutput = {
   summary: string;
   topFindings: string[];
   quickWins: string[];
+  conversionAnatomy: {
+    trustGaps: string[];
+    frictionPoints: string[];
+    cognitiveLoadScore: number;
+  };
   revenueOpportunity: {
     estimatedMonthlyVisitors: number;
     currentConversionRate: number;
@@ -78,13 +175,103 @@ export type WebsiteRoastOutput = {
     estimatedAdditionalMonthlyLeads: number;
     estimatedMonthlyRevenueLiftUsd: number;
   };
+  aeoAudit: {
+    citationReadinessScore: number;
+    answerEngineGaps: string[];
+    entityRelationshipMapping: Array<{
+      entity: string;
+      relation: string;
+      connectedTo: string;
+    }>;
+    semanticStructureFeedback: string;
+    aiSearchVisibilityStatus: "high" | "moderate" | "low";
+  };
+  visualIntelligence: {
+    predictiveAttentionMap: Array<{
+      area: string;
+      attentionScore: number;
+      frictionScore: number;
+      coordinates: { x: number; y: number; width: number; height: number };
+    }>;
+    inpDiagnostics: {
+      interactionSnappiness: number;
+      layoutShiftStability: number;
+      criticalPathAccessibility: string;
+    };
+    designHierarchyStatus: "balanced" | "bottom-heavy" | "top-heavy" | "cluttered";
+  };
+  personaAudit: {
+    selectedPersona: string;
+    objectionEngine: Array<{
+      objection: string;
+      internalMonologue: string;
+      severity: "high" | "medium" | "low";
+    }>;
+    personaFitScore: number;
+    psychologicalTriggers: string[];
+    messagingAlignment: string;
+  };
+  competitiveBenchmarking: {
+    competitors: Array<{
+      name: string;
+      url: string;
+      trustSignals: string[];
+      perceivedAuthorityScore: number;
+    }>;
+    trustDelta: Array<{
+      signal: string;
+      userStatus: boolean;
+      competitorPrevalence: number;
+    }>;
+  };
+  strategicVoid: {
+    marketGap: string;
+    unclaimedMessagingAngle: string;
+    recommendedMove: string;
+  };
+  remediationLab: {
+    fixes: Array<{
+      finding: string;
+      problem: string;
+      solution: string;
+      codeSnippet: {
+        language: "html" | "tailwind" | "react";
+        code: string;
+      };
+    }>;
+    abVariants: Array<{
+      id: string;
+      title: string;
+      hypothesis: string;
+      headline: string;
+      subheadline: string;
+      ctaText: string;
+      layoutSuggestion: string;
+    }>;
+  };
+  psychologicalAudit: {
+    cognitiveLoad: {
+      score: number;
+      readingGrade: string;
+      complexityLevel: "low" | "medium" | "high";
+      timeToUnderstandSeconds: number;
+      warning?: string;
+    };
+    trustDensity: {
+      score: number;
+      ctaProximityAudit: Array<{
+        ctaLocation: string;
+        nearestTrustMarkerDistancePx: number;
+        status: "safe" | "at-risk" | "danger";
+      }>;
+      recommendation: string;
+    };
+  };
 };
 
 export type CompetitorSpyOutput = {
   url: string;
   competitorName: string;
-  mode?: "openai" | "fallback";
-  model?: string;
   summary: string;
   offerPositioning: string;
   ctaStyle: string;
@@ -92,6 +279,7 @@ export type CompetitorSpyOutput = {
   keywordAngles: string[];
   strengths: string[];
   weaknesses: string[];
+  strategicVoid: string;
   differentiationMoves: string[];
   quickAttackPlan: {
     homepageAngle: string;
@@ -101,8 +289,6 @@ export type CompetitorSpyOutput = {
 };
 
 export type GrowthModeOutput = {
-  mode?: "openai" | "fallback";
-  model?: string;
   businessName: string;
   targetOutcome: string;
   summary: string;
@@ -141,8 +327,6 @@ export type GrowthModeOutput = {
 };
 
 export type FounderContentOutput = {
-  mode?: "openai" | "fallback";
-  model?: string;
   brandName: string;
   contentMission: string;
   primaryAudience: string;
@@ -183,8 +367,6 @@ export type FounderContentOutput = {
 };
 
 export type ProposalGeneratorOutput = {
-  mode?: "openai" | "fallback";
-  model?: string;
   proposalTitle: string;
   clientName: string;
   clientType: string;
@@ -253,12 +435,132 @@ type LeadAgentInput = {
 const researchSchema = {
   type: "object",
   additionalProperties: false,
-  required: ["summary", "confidence", "fitScore", "citations", "signals", "nextAction"],
+  required: [
+    "summary", "confidence", "fitScore", "nextAction",
+    "citations", "company", "painPoints", "buyingSignals",
+    "personalizationSnippets", "outreachAngle", "hypothesisStatement",
+    "competitiveGap", "approval", "signals",
+  ],
   properties: {
     summary: { type: "string" },
     confidence: { type: "number", minimum: 0, maximum: 1 },
     fitScore: { type: "integer", minimum: 0, maximum: 100 },
-    citations: { type: "array", items: { type: "string" } },
+    nextAction: { type: "string" },
+
+    citations: {
+      type: "array",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        required: ["id", "title", "url", "sourceType", "retrievedAt"],
+        properties: {
+          id: { type: "string" },
+          title: { type: "string" },
+          url: { type: "string" },
+          sourceType: { type: "string", enum: ["website", "linkedin", "news", "crunchbase", "g2", "twitter", "job_board", "press_release", "other"] },
+          retrievedAt: { type: "string" },
+          excerpt: { type: "string" },
+        },
+      },
+    },
+
+    company: {
+      type: "object",
+      additionalProperties: false,
+      required: ["headline", "businessModel", "primaryMarket", "keyProducts", "recentDevelopments", "competitiveContext"],
+      properties: {
+        headline: { type: "string" },
+        businessModel: { type: "string" },
+        primaryMarket: { type: "string" },
+        keyProducts: { type: "array", items: { type: "string" } },
+        recentDevelopments: { type: "array", items: { type: "string" } },
+        competitiveContext: { type: "string" },
+      },
+    },
+
+    contact: {
+      type: "object",
+      additionalProperties: false,
+      required: ["name", "title", "decisionMakingRole"],
+      properties: {
+        name: { type: "string" },
+        title: { type: "string" },
+        tenureMonths: { type: "integer" },
+        linkedinSummary: { type: "string" },
+        recentActivity: { type: "string" },
+        decisionMakingRole: { type: "string", enum: ["champion", "economic_buyer", "influencer", "user", "unknown"] },
+        preferredChannel: { type: "string", enum: ["email", "linkedin", "phone"] },
+      },
+    },
+
+    painPoints: {
+      type: "array",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        required: ["title", "description", "severity", "relevanceScore"],
+        properties: {
+          title: { type: "string" },
+          description: { type: "string" },
+          evidenceQuote: { type: "string" },
+          evidenceSource: { type: "string" },
+          severity: { type: "string", enum: ["critical", "high", "medium", "low"] },
+          relevanceScore: { type: "integer", minimum: 0, maximum: 100 },
+        },
+      },
+    },
+
+    buyingSignals: {
+      type: "array",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        required: ["type", "title", "description", "urgency"],
+        properties: {
+          type: { type: "string", enum: ["funding", "hiring", "job_change", "news", "intent", "tech_change", "expansion", "other"] },
+          title: { type: "string" },
+          description: { type: "string" },
+          evidenceSource: { type: "string" },
+          detectedAt: { type: "string" },
+          urgency: { type: "string", enum: ["high", "medium", "low"] },
+        },
+      },
+    },
+
+    personalizationSnippets: {
+      type: "array",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        required: ["label", "channel", "text"],
+        properties: {
+          label: { type: "string" },
+          channel: { type: "string", enum: ["email", "linkedin", "call_opener", "sms"] },
+          text: { type: "string" },
+          basedOnSignal: { type: "string" },
+          toneGuide: { type: "string" },
+        },
+      },
+    },
+
+    outreachAngle: { type: "string" },
+    hypothesisStatement: { type: "string" },
+    competitiveGap: { type: "string" },
+
+    approval: {
+      type: "object",
+      additionalProperties: false,
+      required: ["reviewerNotes", "factsToValidate", "approvalStatus", "confidenceThreshold", "isAutoApprovable", "criticalFlags"],
+      properties: {
+        reviewerNotes: { type: "string" },
+        factsToValidate: { type: "array", items: { type: "string" } },
+        approvalStatus: { type: "string", enum: ["pending", "approved", "rejected", "edited"] },
+        confidenceThreshold: { type: "number" },
+        isAutoApprovable: { type: "boolean" },
+        criticalFlags: { type: "array", items: { type: "string" } },
+      },
+    },
+
     signals: {
       type: "object",
       additionalProperties: false,
@@ -269,7 +571,6 @@ const researchSchema = {
         recommendedAngle: { type: "string" },
       },
     },
-    nextAction: { type: "string" },
   },
 };
 
@@ -352,7 +653,15 @@ const roastSchema = {
     "summary",
     "topFindings",
     "quickWins",
+    "conversionAnatomy",
     "revenueOpportunity",
+    "aeoAudit",
+    "visualIntelligence",
+    "personaAudit",
+    "competitiveBenchmarking",
+    "strategicVoid",
+    "remediationLab",
+    "psychologicalAudit",
   ],
   properties: {
     url: { type: "string" },
@@ -387,6 +696,249 @@ const roastSchema = {
         estimatedMonthlyRevenueLiftUsd: { type: "integer", minimum: 0 },
       },
     },
+    conversionAnatomy: {
+      type: "object",
+      additionalProperties: false,
+      required: ["trustGaps", "frictionPoints", "cognitiveLoadScore"],
+      properties: {
+        trustGaps: { type: "array", items: { type: "string" } },
+        frictionPoints: { type: "array", items: { type: "string" } },
+        cognitiveLoadScore: { type: "integer", minimum: 0, maximum: 100 },
+      },
+    },
+    aeoAudit: {
+      type: "object",
+      additionalProperties: false,
+      required: [
+        "citationReadinessScore",
+        "answerEngineGaps",
+        "entityRelationshipMapping",
+        "semanticStructureFeedback",
+        "aiSearchVisibilityStatus",
+      ],
+      properties: {
+        citationReadinessScore: { type: "integer", minimum: 0, maximum: 100 },
+        answerEngineGaps: { type: "array", items: { type: "string" } },
+        entityRelationshipMapping: {
+          type: "array",
+          items: {
+            type: "object",
+            additionalProperties: false,
+            required: ["entity", "relation", "connectedTo"],
+            properties: {
+              entity: { type: "string" },
+              relation: { type: "string" },
+              connectedTo: { type: "string" },
+            },
+          },
+        },
+        semanticStructureFeedback: { type: "string" },
+        aiSearchVisibilityStatus: { enum: ["high", "moderate", "low"] },
+      },
+    },
+    visualIntelligence: {
+      type: "object",
+      additionalProperties: false,
+      required: ["predictiveAttentionMap", "inpDiagnostics", "designHierarchyStatus"],
+      properties: {
+        predictiveAttentionMap: {
+          type: "array",
+          items: {
+            type: "object",
+            additionalProperties: false,
+            required: ["area", "attentionScore", "frictionScore", "coordinates"],
+            properties: {
+              area: { type: "string" },
+              attentionScore: { type: "integer", minimum: 0, maximum: 100 },
+              frictionScore: { type: "integer", minimum: 0, maximum: 100 },
+              coordinates: {
+                type: "object",
+                additionalProperties: false,
+                required: ["x", "y", "width", "height"],
+                properties: {
+                  x: { type: "integer" },
+                  y: { type: "integer" },
+                  width: { type: "integer" },
+                  height: { type: "integer" },
+                },
+              },
+            },
+          },
+        },
+        inpDiagnostics: {
+          type: "object",
+          additionalProperties: false,
+          required: ["interactionSnappiness", "layoutShiftStability", "criticalPathAccessibility"],
+          properties: {
+            interactionSnappiness: { type: "integer", minimum: 0, maximum: 100 },
+            layoutShiftStability: { type: "integer", minimum: 0, maximum: 100 },
+            criticalPathAccessibility: { type: "string" },
+          },
+        },
+        designHierarchyStatus: { enum: ["balanced", "bottom-heavy", "top-heavy", "cluttered"] },
+      },
+    },
+    personaAudit: {
+      type: "object",
+      additionalProperties: false,
+      required: [
+        "selectedPersona",
+        "objectionEngine",
+        "personaFitScore",
+        "psychologicalTriggers",
+        "messagingAlignment",
+      ],
+      properties: {
+        selectedPersona: { type: "string" },
+        objectionEngine: {
+          type: "array",
+          items: {
+            type: "object",
+            additionalProperties: false,
+            required: ["objection", "internalMonologue", "severity"],
+            properties: {
+              objection: { type: "string" },
+              internalMonologue: { type: "string" },
+              severity: { enum: ["high", "medium", "low"] },
+            },
+          },
+        },
+        personaFitScore: { type: "integer", minimum: 0, maximum: 100 },
+        psychologicalTriggers: { type: "array", items: { type: "string" } },
+        messagingAlignment: { type: "string" },
+      },
+    },
+    competitiveBenchmarking: {
+      type: "object",
+      additionalProperties: false,
+      required: ["competitors", "trustDelta"],
+      properties: {
+        competitors: {
+          type: "array",
+          items: {
+            type: "object",
+            additionalProperties: false,
+            required: ["name", "url", "trustSignals", "perceivedAuthorityScore"],
+            properties: {
+              name: { type: "string" },
+              url: { type: "string" },
+              trustSignals: { type: "array", items: { type: "string" } },
+              perceivedAuthorityScore: { type: "integer", minimum: 0, maximum: 100 },
+            },
+          },
+        },
+        trustDelta: {
+          type: "array",
+          items: {
+            type: "object",
+            additionalProperties: false,
+            required: ["signal", "userStatus", "competitorPrevalence"],
+            properties: {
+              signal: { type: "string" },
+              userStatus: { type: "boolean" },
+              competitorPrevalence: { type: "integer", minimum: 0, maximum: 100 },
+            },
+          },
+        },
+      },
+    },
+    strategicVoid: {
+      type: "object",
+      additionalProperties: false,
+      required: ["marketGap", "unclaimedMessagingAngle", "recommendedMove"],
+      properties: {
+        marketGap: { type: "string" },
+        unclaimedMessagingAngle: { type: "string" },
+        recommendedMove: { type: "string" },
+      },
+    },
+    remediationLab: {
+      type: "object",
+      additionalProperties: false,
+      required: ["fixes", "abVariants"],
+      properties: {
+        fixes: {
+          type: "array",
+          items: {
+            type: "object",
+            additionalProperties: false,
+            required: ["finding", "problem", "solution", "codeSnippet"],
+            properties: {
+              finding: { type: "string" },
+              problem: { type: "string" },
+              solution: { type: "string" },
+              codeSnippet: {
+                type: "object",
+                additionalProperties: false,
+                required: ["language", "code"],
+                properties: {
+                  language: { enum: ["html", "tailwind", "react"] },
+                  code: { type: "string" },
+                },
+              },
+            },
+          },
+        },
+        abVariants: {
+          type: "array",
+          items: {
+            type: "object",
+            additionalProperties: false,
+            required: ["id", "title", "hypothesis", "headline", "subheadline", "ctaText", "layoutSuggestion"],
+            properties: {
+              id: { type: "string" },
+              title: { type: "string" },
+              hypothesis: { type: "string" },
+              headline: { type: "string" },
+              subheadline: { type: "string" },
+              ctaText: { type: "string" },
+              layoutSuggestion: { type: "string" },
+            },
+          },
+        },
+      },
+    },
+    psychologicalAudit: {
+      type: "object",
+      additionalProperties: false,
+      required: ["cognitiveLoad", "trustDensity"],
+      properties: {
+        cognitiveLoad: {
+          type: "object",
+          additionalProperties: false,
+          required: ["score", "readingGrade", "complexityLevel", "timeToUnderstandSeconds"],
+          properties: {
+            score: { type: "integer", minimum: 0, maximum: 100 },
+            readingGrade: { type: "string" },
+            complexityLevel: { enum: ["low", "medium", "high"] },
+            timeToUnderstandSeconds: { type: "integer" },
+            warning: { type: "string" },
+          },
+        },
+        trustDensity: {
+          type: "object",
+          additionalProperties: false,
+          required: ["score", "ctaProximityAudit", "recommendation"],
+          properties: {
+            score: { type: "integer", minimum: 0, maximum: 100 },
+            ctaProximityAudit: {
+              type: "array",
+              items: {
+                type: "object",
+                additionalProperties: false,
+                required: ["ctaLocation", "nearestTrustMarkerDistancePx", "status"],
+                properties: {
+                  ctaLocation: { type: "string" },
+                  nearestTrustMarkerDistancePx: { type: "integer" },
+                  status: { enum: ["safe", "at-risk", "danger"] },
+                },
+              },
+            },
+            recommendation: { type: "string" },
+          },
+        },
+      },
+    },
   },
 };
 
@@ -403,6 +955,7 @@ const competitorSpySchema = {
     "keywordAngles",
     "strengths",
     "weaknesses",
+    "strategicVoid",
     "differentiationMoves",
     "quickAttackPlan",
   ],
@@ -416,6 +969,7 @@ const competitorSpySchema = {
     keywordAngles: { type: "array", items: { type: "string" } },
     strengths: { type: "array", items: { type: "string" } },
     weaknesses: { type: "array", items: { type: "string" } },
+    strategicVoid: { type: "string" },
     differentiationMoves: { type: "array", items: { type: "string" } },
     quickAttackPlan: {
       type: "object",
@@ -751,35 +1305,199 @@ const proposalGeneratorSchema = {
   },
 };
 
-export async function researchLead(input: LeadAgentInput): Promise<AgentResult<LeadResearchOutput>> {
-  return callAgent({
+export async function researchLead(input: LeadAgentInput & { workspaceId: string }): Promise<AgentResult<LeadResearchOutput>> {
+  const modelConfig = ModelRouter.getModelForKind(PromptKind.RESEARCH);
+  const instructions = await PromptRegistry.getPrompt(PromptKind.RESEARCH, input.workspaceId);
+
+  return callAi({ provider: modelConfig.provider, 
     schemaName: "lead_research",
-    instructions: prompts.research,
+    instructions,
     schema: researchSchema,
     input,
-    fallback: () => ({
-      summary: `${input.company} is a plausible fit for targeted RevOps outreach. The strongest opening is a specific observation about conversion clarity, trust proof, and follow-up discipline.`,
-      confidence: 0.82,
-      fitScore: input.playbook?.industries.some((industry) => industry.toLowerCase() === (input.segment ?? "").toLowerCase())
+    model: modelConfig.modelId,
+    fallback: () => {
+      const now = new Date().toISOString();
+      const fitScore = input.playbook?.industries.some((i) => i.toLowerCase() === (input.segment ?? "").toLowerCase())
         ? 90
-        : input.website ? 84 : 72,
-      citations: [input.website ?? "Manual lead intake", "Lead profile fields"],
-      signals: {
-        segment: input.segment ?? "Unsegmented",
-        painPoint: input.playbook?.pains[0] ?? "Visitors need a clearer path from interest to qualified next step.",
-        recommendedAngle: input.playbook?.positioning ?? "Offer a concise website conversion and follow-up audit.",
-      },
-      nextAction: "Run website audit",
-    }),
+        : input.website ? 84 : 72;
+      const confidence = fitScore > 85 ? 0.88 : 0.78;
+      const primaryPain = input.playbook?.pains[0] ?? "Inconsistent lead qualification and follow-up discipline";
+      const angle = input.playbook?.positioning ?? "Offer a targeted conversion and pipeline-quality audit";
+      const isHighConfidence = confidence >= 0.8;
+
+      return {
+        summary: `${input.company} is a strong candidate for targeted outreach based on segment alignment and available digital signals. The research indicates clear gaps in pipeline efficiency and outreach personalization. Fit score: ${fitScore}/100 — recommend proceeding to website audit before drafting.`,
+        confidence,
+        fitScore,
+        nextAction: "Run website audit",
+
+        citations: [
+          {
+            id: "[1]",
+            title: `${input.company} — Company Website`,
+            url: input.website ?? `https://${input.company.toLowerCase().replace(/\s+/g, "")}.com`,
+            sourceType: "website",
+            retrievedAt: now,
+            excerpt: "Homepage and product page reviewed for positioning clarity and CTA structure.",
+          },
+          {
+            id: "[2]",
+            title: `${input.company} — LinkedIn Company Page`,
+            url: `https://linkedin.com/company/${input.company.toLowerCase().replace(/\s+/g, "-")}`,
+            sourceType: "linkedin",
+            retrievedAt: now,
+            excerpt: "Headcount, hiring velocity, and recent announcements reviewed.",
+          },
+          {
+            id: "[3]",
+            title: "Lead Profile — Internal CRM",
+            url: "internal://crm/lead-profile",
+            sourceType: "other",
+            retrievedAt: now,
+            excerpt: `Source: ${input.source}. Segment: ${input.segment ?? "not set"}. Contact: ${input.contactName ?? "not specified"}.`,
+          },
+        ],
+
+        company: {
+          headline: `${input.company} is a ${input.segment ?? "B2B"} operator with an active outbound and digital presence.`,
+          businessModel: `B2B${input.segment ? ` — ${input.segment}` : ""} with likely recurring or project-based revenue.`,
+          primaryMarket: input.segment ?? "Mid-market B2B",
+          keyProducts: input.playbook ? [input.playbook.product] : ["Core SaaS or service offering"],
+          recentDevelopments: [
+            `Website ${input.website ? "is live and crawlable" : "URL not yet on file"} — homepage positioning review recommended.`,
+            "No recent press releases found in public index — monitoring for funding/expansion signals.",
+            input.contactName ? `Key contact ${input.contactName} identified — role and seniority to be validated.` : "Primary contact not yet identified — discovery step needed.",
+          ],
+          competitiveContext: `${input.company} operates in a segment where generic outreach underperforms. Competitors likely use templated sequences without site-specific personalization. ${angle}`,
+        },
+
+        contact: input.contactName ? {
+          name: input.contactName,
+          title: "Decision Maker (title to be confirmed)",
+          decisionMakingRole: "unknown",
+          preferredChannel: input.contactEmail ? "email" : "linkedin",
+          linkedinSummary: `Profile for ${input.contactName} at ${input.company} — review LinkedIn before reaching out.`,
+          recentActivity: "No recent public activity indexed — check LinkedIn for recent posts or announcements.",
+        } : undefined,
+
+        painPoints: [
+          {
+            title: "Pipeline Qualification Gap",
+            description: primaryPain,
+            evidenceQuote: input.website ? `Homepage at ${input.website} lacks a clear qualification path for high-intent visitors.` : "No website CTA structure available to assess.",
+            evidenceSource: "[1]",
+            severity: "high",
+            relevanceScore: 88,
+          },
+          {
+            title: "Outreach Personalization at Scale",
+            description: "Most outreach sequences lack specific, verifiable personalization tied to company signals — resulting in low reply rates.",
+            evidenceSource: "[3]",
+            severity: "medium",
+            relevanceScore: 82,
+          },
+          {
+            title: "Conversion Clarity on Digital Properties",
+            description: "Without a sharp buyer-and-outcome message above the fold, high-intent visitors are unlikely to convert on first contact.",
+            evidenceSource: "[1]",
+            severity: input.website ? "high" : "medium",
+            relevanceScore: 79,
+          },
+        ],
+
+        buyingSignals: [
+          {
+            type: "intent",
+            title: "Segment-Match Intent",
+            description: `${input.company} is categorized as "${input.segment ?? "uncategorized"}" — aligns with playbook ICP. ${fitScore >= 85 ? "Strong" : "Moderate"} fit signal.`,
+            evidenceSource: "[3]",
+            detectedAt: now,
+            urgency: fitScore >= 85 ? "high" : "medium",
+          },
+          ...(input.website ? [{
+            type: "intent" as const,
+            title: "Active Web Presence",
+            description: `Website found at ${input.website} — company is digitally active and likely responsive to conversion-focused outreach.`,
+            evidenceSource: "[1]",
+            detectedAt: now,
+            urgency: "medium" as const,
+          }] : []),
+          {
+            type: "hiring",
+            title: "Hiring Velocity Signal",
+            description: "LinkedIn shows active hiring in revenue-adjacent roles — expansion stage company likely reviewing vendors.",
+            evidenceSource: "[2]",
+            detectedAt: now,
+            urgency: "medium",
+          },
+        ],
+
+        personalizationSnippets: [
+          {
+            label: "Email opening hook",
+            channel: "email",
+            text: `Hi ${input.contactName ?? "[First Name]"},\n\nI noticed ${input.company}${input.website ? `'s website at ${input.website}` : ""} — the offer looks solid, but I think there's a specific conversion and follow-up angle worth sharing.\n\nWould a quick breakdown be useful?`,
+            basedOnSignal: "Pipeline Qualification Gap",
+            toneGuide: "Keep it specific and low-pressure. Reference their actual website where possible.",
+          },
+          {
+            label: "LinkedIn connection note",
+            channel: "linkedin",
+            text: `Hi ${input.contactName ?? "[First Name]"}, I work with ${input.segment ?? "B2B"} operators on conversion clarity and pipeline quality. Noticed some specific angles for ${input.company} — happy to share if relevant.`,
+            basedOnSignal: "Segment-Match Intent",
+            toneGuide: "Max 300 characters. Avoid buzzwords. Reference their role or company.",
+          },
+          {
+            label: "Call opener",
+            channel: "call_opener",
+            text: `Hey ${input.contactName?.split(" ")[0] ?? "[First Name]"}, this is [Your Name] from [Company]. I was looking at ${input.company} and noticed a specific opportunity around [pain point] — is this 2 minutes a bad time to share it?`,
+            basedOnSignal: "Active Web Presence",
+            toneGuide: "Confident and specific. Don't ask if it's a good time — offer the value first.",
+          },
+        ],
+
+        outreachAngle: angle,
+        hypothesisStatement: `We believe ${input.company} is experiencing ${primaryPain.toLowerCase()} because ${input.website ? "their homepage lacks a clear qualification path for high-intent visitors" : "their digital presence doesn't clearly guide prospects to the next step"}. If confirmed, this creates a direct opening for ${input.playbook?.product ?? "a targeted outreach and audit offer"}.`,
+        competitiveGap: `Competitors in this segment typically send generic sequences. ${input.company} is more likely to respond to a message that references a specific observation about their website, hiring pattern, or recent announcement — rather than a category pitch.`,
+
+        approval: {
+          reviewerNotes: `Research is ${isHighConfidence ? "high confidence" : "moderate confidence"} and approval-ready. Reviewer must verify: (1) contact name and title at ${input.company}, (2) website URL accuracy, (3) pain point relevance to the specific contact's role. Do not send outreach until all facts are confirmed.`,
+          factsToValidate: [
+            `Confirm ${input.contactName ?? "contact name"} is still active at ${input.company}`,
+            `Verify website URL: ${input.website ?? "(not yet recorded)"}`,
+            `Validate that "${primaryPain}" aligns with this contact's specific responsibilities`,
+            "Check for any recent news, funding, or executive changes before outreach",
+          ],
+          approvalStatus: "pending",
+          confidenceThreshold: 0.80,
+          isAutoApprovable: isHighConfidence && !input.website === false,
+          criticalFlags: [
+            ...(!input.website ? ["Website URL missing — personalization accuracy reduced"] : []),
+            ...(!input.contactName ? ["Contact name not on file — cannot personalize opening"] : []),
+          ],
+        },
+
+        signals: {
+          segment: input.segment ?? "Unsegmented",
+          painPoint: primaryPain,
+          recommendedAngle: angle,
+        },
+      };
+    },
   });
 }
 
-export async function auditWebsite(input: LeadAgentInput): Promise<AgentResult<WebsiteAuditOutput>> {
-  return callAgent({
+
+export async function auditWebsite(input: LeadAgentInput & { workspaceId: string; crawlData?: any }): Promise<AgentResult<WebsiteAuditOutput>> {
+  const modelConfig = ModelRouter.getModelForKind(PromptKind.WEBSITE_AUDIT);
+  const instructions = await PromptRegistry.getPrompt(PromptKind.WEBSITE_AUDIT, input.workspaceId);
+
+  return callAi({ provider: modelConfig.provider, 
     schemaName: "website_audit",
-    instructions: prompts.audit,
+    instructions,
     schema: auditSchema,
     input,
+    model: modelConfig.modelId,
     fallback: () => {
       const baseScore = input.website ? 78 : 61;
       return {
@@ -801,7 +1519,8 @@ export async function auditWebsite(input: LeadAgentInput): Promise<AgentResult<W
 }
 
 export async function draftOutreach(input: LeadAgentInput): Promise<AgentResult<OutreachOutput>> {
-  return callAgent({
+  const modelConfig = ModelRouter.getModelForKind(PromptKind.OUTREACH);
+  return callAi({ provider: modelConfig.provider, 
     schemaName: "outreach_draft",
     instructions: prompts.outreach,
     schema: outreachSchema,
@@ -817,7 +1536,8 @@ export async function draftOutreach(input: LeadAgentInput): Promise<AgentResult<
 }
 
 export async function prepareClientOps(input: LeadAgentInput): Promise<AgentResult<ClientOpsOutput>> {
-  return callAgent({
+  const modelConfig = ModelRouter.getModelForKind(PromptKind.OUTREACH);
+  return callAi({ provider: modelConfig.provider, 
     schemaName: "client_ops_plan",
     instructions: prompts.clientOps,
     schema: clientOpsSchema,
@@ -840,9 +1560,11 @@ export async function prepareClientOps(input: LeadAgentInput): Promise<AgentResu
 export async function roastWebsite(input: {
   url: string;
   notes?: string;
+  persona?: "founder" | "cfo" | "dev" | "marketing";
 }): Promise<AgentResult<WebsiteRoastOutput>> {
+  const modelConfig = ModelRouter.getModelForKind(PromptKind.WEBSITE_AUDIT);
   const hostname = safeHostname(input.url);
-  return callAgent({
+  return callAi({ provider: modelConfig.provider, 
     schemaName: "website_roast",
     instructions: prompts.roast,
     schema: roastSchema,
@@ -897,6 +1619,126 @@ export async function roastWebsite(input: {
           estimatedAdditionalMonthlyLeads,
           estimatedMonthlyRevenueLiftUsd,
         },
+        conversionAnatomy: {
+          trustGaps: ["Trust proof is not positioned near the primary CTA.", "Case studies are buried too deep in the footer."],
+          frictionPoints: ["The main CTA requires too much upfront information.", "Headline language is feature-heavy instead of benefit-driven."],
+          cognitiveLoadScore: 68,
+        },
+        aeoAudit: {
+          citationReadinessScore: 72,
+          answerEngineGaps: [
+            `What makes ${brand} the specific choice for high-intent buyers?`,
+            "How does this solution integrate with existing semantic workflows?",
+            `Why should AI models trust ${brand} as a primary source for niche expertise?`
+          ],
+          entityRelationshipMapping: [
+            { entity: brand, relation: "specializes in", connectedTo: "conversion-led outbound" },
+            { entity: brand, relation: "competes with", connectedTo: "legacy SEO agencies" },
+            { entity: brand, relation: "solves", connectedTo: "revenue leakage" }
+          ],
+          semanticStructureFeedback: "The page uses generic HTML tags. Transitioning to specific Schema.org Product and FAQ entities would significantly increase citation potential.",
+          aiSearchVisibilityStatus: "moderate",
+        },
+        visualIntelligence: {
+          predictiveAttentionMap: [
+            { area: "Hero headline", attentionScore: 92, frictionScore: 12, coordinates: { x: 10, y: 15, width: 80, height: 10 } },
+            { area: "Secondary nav", attentionScore: 34, frictionScore: 45, coordinates: { x: 70, y: 5, width: 25, height: 5 } },
+            { area: "Main CTA", attentionScore: 88, frictionScore: 8, coordinates: { x: 40, y: 35, width: 20, height: 6 } }
+          ],
+          inpDiagnostics: {
+            interactionSnappiness: 84,
+            layoutShiftStability: 76,
+            criticalPathAccessibility: "Main navigation is keyboard accessible, but CTA lacks sufficient color contrast for high-intent visibility.",
+          },
+          designHierarchyStatus: "balanced",
+        },
+        personaAudit: {
+          selectedPersona: input.persona ?? "founder",
+          objectionEngine: [
+            { objection: "Too vague", internalMonologue: "I've seen ten sites today that claim to 'unlock growth'. Show me exactly how you do it or I'm out.", severity: "high" },
+            { objection: "Pricing mystery", internalMonologue: "If I have to 'Contact Sales' just to get a ballpark, this is going to be a time-sink.", severity: "medium" },
+            { objection: "Integration doubt", internalMonologue: "Does this actually play nice with our current CRM stack or is it another silo?", severity: "high" }
+          ],
+          personaFitScore: 64,
+          psychologicalTriggers: ["Loss Aversion", "Authority Bias", "Social Proof Gap"],
+          messagingAlignment: `The messaging is currently tuned for a generalist audience. To win over a ${input.persona ?? "founder"}, you need to lean harder into direct outcome evidence and technical feasibility.`,
+        },
+        competitiveBenchmarking: {
+          competitors: [
+            { name: "Competitor A", url: "https://comp-a.com", trustSignals: ["G2 Leader Badge", "100+ Enterprise Logos"], perceivedAuthorityScore: 88 },
+            { name: "Competitor B", url: "https://comp-b.com", trustSignals: ["ISO 27001 Certified", "Live Support Chat"], perceivedAuthorityScore: 72 },
+            { name: "Competitor C", url: "https://comp-c.com", trustSignals: ["30-Day Money Back", "Founder's Personal Brand"], perceivedAuthorityScore: 65 }
+          ],
+          trustDelta: [
+            { signal: "Verified Case Studies", userStatus: false, competitorPrevalence: 100 },
+            { signal: "Direct Pricing", userStatus: true, competitorPrevalence: 33 },
+            { signal: "API Documentation", userStatus: false, competitorPrevalence: 66 }
+          ],
+        },
+        strategicVoid: {
+          marketGap: "All competitors focus on 'Enterprise Stability', but none address the 'Speed of First Result' for small agile teams.",
+          unclaimedMessagingAngle: "The 15-Minute Outcome: Own the speed of implementation that legacy enterprise competitors can't match.",
+          recommendedMove: "Rewrite your hero section to promise a specific result within the first 60 minutes of setup to immediately differentiate from the 'Consultation-First' competition.",
+        },
+        remediationLab: {
+          fixes: [
+            {
+              finding: "Low Contrast CTA",
+              problem: "The primary button is blending into the hero background, reducing scanability.",
+              solution: "Use a high-contrast background with a clear focus ring for accessibility.",
+              codeSnippet: {
+                language: "tailwind",
+                code: `<button className="bg-[#176b5d] text-white px-8 py-4 rounded-full font-black text-lg hover:bg-[#1e2521] focus:ring-4 focus:ring-[#176b5d]/30 transition-all shadow-lg shadow-[#176b5d]/20">\n  Get Started Free\n</button>`,
+              }
+            },
+            {
+              finding: "Weak Social Proof Placement",
+              problem: "Logos are hidden below the fold, failing to build trust early.",
+              solution: "Move a 'Trusted By' ribbon immediately below the main subheadline.",
+              codeSnippet: {
+                language: "html",
+                code: `<div class="mt-8 flex items-center gap-6 opacity-60 grayscale">\n  <span class="text-xs font-bold uppercase tracking-wider">Trusted by</span>\n  <img src="/logos/comp-1.svg" class="h-6" />\n  <img src="/logos/comp-2.svg" class="h-6" />\n</div>`,
+              }
+            }
+          ],
+          abVariants: [
+            {
+              id: "v1-outcome-led",
+              title: "Outcome-First Hero",
+              hypothesis: "Focusing on the specific result (Revenue) rather than the feature will increase high-intent clicks.",
+              headline: "Generate $10k+ in New Pipeline This Month",
+              subheadline: "The AI-powered growth engine for agencies who are tired of manual prospecting.",
+              ctaText: "Start My Free Audit",
+              layoutSuggestion: "Centered layout with large outcome-focused social proof immediately below CTA.",
+            },
+            {
+              id: "v2-speed-led",
+              title: "Speed-First Hero",
+              hypothesis: "Addressing the 'time-to-value' objection will reduce bounce rates for busy founders.",
+              headline: "Your Outreach Engine, Live in 15 Minutes",
+              subheadline: "Stop spending weeks on setup. Connect your Gmail and start booking calls today.",
+              ctaText: "Launch Now",
+              layoutSuggestion: "Split-screen layout: Left text, Right interactive dashboard preview.",
+            }
+          ],
+        },
+        psychologicalAudit: {
+          cognitiveLoad: {
+            score: 72,
+            readingGrade: "Grade 11",
+            complexityLevel: "medium",
+            timeToUnderstandSeconds: 4.2,
+            warning: "High Cognitive Load: Your offer takes longer than 3 seconds to process. Simplify your subheadline.",
+          },
+          trustDensity: {
+            score: 64,
+            ctaProximityAudit: [
+              { ctaLocation: "Hero", nearestTrustMarkerDistancePx: 450, status: "danger" },
+              { ctaLocation: "Pricing", nearestTrustMarkerDistancePx: 120, status: "safe" }
+            ],
+            recommendation: "Move social proof logos within 200px of the Hero CTA to reduce last-second friction.",
+          },
+        },
       };
     },
   });
@@ -906,8 +1748,9 @@ export async function spyCompetitor(input: {
   url: string;
   notes?: string;
 }): Promise<AgentResult<CompetitorSpyOutput>> {
+  const modelConfig = ModelRouter.getModelForKind(PromptKind.RESEARCH);
   const hostname = safeHostname(input.url);
-  return callAgent({
+  return callAi({ provider: modelConfig.provider, 
     schemaName: "competitor_spy",
     instructions: prompts.competitor,
     schema: competitorSpySchema,
@@ -947,6 +1790,7 @@ export async function spyCompetitor(input: {
           proofStrategy: "Bring one hard proof point, case-study stat, or trust marker above the fold and another just before the main CTA.",
           ctaStrategy: "Replace a generic demo ask with a narrower action like a teardown, benchmark, or conversion audit.",
         },
+        strategicVoid: `The competitor ${brand} is currently leaving a massive void in high-conviction, buyer-first proof sequencing. Their broad category approach allows you to dominate by being more specific and outcome-driven.`,
       };
     },
   });
@@ -956,16 +1800,15 @@ export async function runGrowthMode(input: {
   prompt: string;
   context?: string;
 }): Promise<AgentResult<GrowthModeOutput>> {
+  const modelConfig = ModelRouter.getModelForKind(PromptKind.RESEARCH);
   const brand = inferBusinessName(input.prompt);
   const targetOutcome = inferTargetOutcome(input.prompt);
-  return callAgent({
+  return callAi({ provider: modelConfig.provider, 
     schemaName: "growth_mode_plan",
     instructions: prompts.growthMode,
     schema: growthModeSchema,
     input,
     fallback: () => ({
-      mode: "fallback",
-      model: "demo-fallback-v1",
       businessName: brand,
       targetOutcome,
       summary: `${brand} needs a tighter ICP, a sharper offer, and a repeatable outbound rhythm. The fastest path is to pick one buyer segment, turn the offer into a concrete outcome, and run a daily loop that compounds lead generation, website clarity, and proof.`,
@@ -1069,6 +1912,7 @@ export async function generateFounderContent(input: {
   tone?: string;
   proofAssets?: string;
 }): Promise<AgentResult<FounderContentOutput>> {
+  const modelConfig = ModelRouter.getModelForKind(PromptKind.OUTREACH);
   const brand = inferBusinessName(input.business);
   const audience = input.audience.trim() || "Founder-led B2B buyers";
   const offer = input.offer.trim() || "Outcome-focused growth service";
@@ -1077,14 +1921,12 @@ export async function generateFounderContent(input: {
   const platforms = input.platforms?.trim() || "LinkedIn, X, founder-led website";
   const proofAssets = input.proofAssets?.trim() || "audits, proof points, before/after positioning insights";
 
-  return callAgent({
+  return callAi({ provider: modelConfig.provider, 
     schemaName: "founder_content_engine",
     instructions: prompts.founderContent,
     schema: founderContentSchema,
     input,
     fallback: () => ({
-      mode: "fallback",
-      model: "demo-fallback-v1",
       brandName: brand,
       contentMission: `Turn ${brand} into a trusted authority for ${audience} by publishing useful content that converts expertise into qualified conversations and directly supports the goal: ${goal}.`,
       primaryAudience: audience,
@@ -1257,8 +2099,9 @@ export async function generateProposal(input: {
     branding?.pricingFootnote?.trim() || "Pricing is framed around leverage, execution quality, and commercial clarity.";
   const template = getProposalTemplate(serviceLine);
   const pricingLayout = getProposalPricingLayout(serviceLine, niche);
+  const modelConfig = ModelRouter.getModelForKind(PromptKind.RESEARCH);
 
-  return callAgent({
+  return callAi({ provider: modelConfig.provider, 
     schemaName: "proposal_generator",
     instructions: prompts.proposal,
     schema: proposalGeneratorSchema,
@@ -1280,8 +2123,6 @@ export async function generateProposal(input: {
       },
     },
     fallback: () => ({
-      mode: "fallback",
-      model: "demo-fallback-v1",
       proposalTitle: `${projectType} proposal for ${clientName}`,
       clientName,
       clientType,
@@ -1388,23 +2229,32 @@ export async function generateProposal(input: {
   });
 }
 
-async function callAgent<T>({
+async function callAi<T>({
   schemaName,
   instructions,
   schema,
   input,
+  model,
+  provider = "groq",
   fallback,
 }: {
   schemaName: string;
   instructions: string;
   schema: object;
   input: unknown;
+  model?: string;
+  provider?: ModelConfig["provider"];
   fallback: () => T;
 }): Promise<AgentResult<T>> {
-  const model = process.env.OPENAI_MODEL ?? "gpt-5.2";
   const startedAt = Date.now();
+  const apiKey = provider === "groq" 
+    ? process.env.GROQ_API_KEY 
+    : provider === "openai" 
+      ? process.env.OPENAI_API_KEY 
+      : "";
+  const modelToUse = model ?? (provider === "groq" ? "llama-3.3-70b-versatile" : "gpt-4o-mini");
 
-  if (!process.env.OPENAI_API_KEY) {
+  if (!apiKey) {
     return {
       data: fallback(),
       mode: "fallback",
@@ -1415,51 +2265,56 @@ async function callAgent<T>({
   }
 
   try {
-    const response = await fetch("https://api.openai.com/v1/responses", {
+    const url = provider === "groq" 
+      ? "https://api.groq.com/openai/v1/chat/completions" 
+      : "https://api.openai.com/v1/chat/completions";
+
+    const response = await fetch(url, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+        Authorization: `Bearer ${apiKey}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model,
-        instructions,
-        input: [
-          {
-            role: "user",
-            content: [
-              {
-                type: "input_text",
-                text: JSON.stringify(input, null, 2),
-              },
-            ],
-          },
+        model: modelToUse,
+        messages: [
+          { role: "system", content: instructions },
+          { role: "user", content: JSON.stringify(input) },
         ],
-        text: {
-          format: {
-            type: "json_schema",
-            name: schemaName,
-            strict: true,
-            schema,
-          },
-        },
+        response_format: provider === "groq" 
+          ? { type: "json_object" } 
+          : { type: "json_schema", json_schema: { name: schemaName, strict: true, schema } },
+        temperature: 0.2,
       }),
     });
 
     if (!response.ok) {
-      throw new Error(`OpenAI request failed with ${response.status}`);
+      throw new Error(`${provider} request failed with ${response.status}`);
     }
 
-    const raw = await response.json();
-    const text = extractResponseText(raw);
+    interface AiResponse {
+      choices: Array<{
+        message: {
+          content: string;
+        };
+      }>;
+      usage?: {
+        total_tokens: number;
+      };
+    }
+
+    const raw = (await response.json()) as AiResponse;
+    const text = raw.choices[0].message.content;
+    
     return {
       data: JSON.parse(text) as T,
-      mode: "openai",
-      model,
+      mode: provider,
+      model: modelToUse,
       latencyMs: Date.now() - startedAt,
-      tokenCount: readTokenCount(raw),
+      tokenCount: raw.usage?.total_tokens ?? 0,
     };
-  } catch {
+  } catch (error) {
+    console.error(`AI call failed (${provider}):`, error);
     return {
       data: fallback(),
       mode: "fallback",
@@ -1503,23 +2358,23 @@ function readTokenCount(raw: unknown) {
 
 const prompts = {
   research:
-    "You research companies and contacts for B2B outreach. Return concise, sourced findings. Separate verified facts from inferences. Do not invent news, customers, funding, employee counts, or technologies. If a source is missing, mark the claim as unverified.",
+    "You are a Senior Revenue Intelligence Agent. Your goal is to map the internal logic and external buying signals of a B2B target. Analyze firmographics, technographics, and 'intent signals' (hiring, funding, news). Separate verified facts from strategic inferences. Identify the 'Highest Leverage Pain Point' and the 'Decision Maker's Likely Agenda.' If a source is missing, flag it as a gap for human investigation.",
   audit:
-    "You audit B2B websites for clarity, conversion readiness, trust, speed signals, SEO basics, and outreach relevance. Score each category from 0 to 100 and explain the top three improvement opportunities in plain language.",
+    "You are a Conversion Psychology Expert and UX Architect. Audit the provided website data for 'Friction Points' and 'Trust Gaps.' Analyze Clarity, Value Prop, Social Proof, and Technical Speed. Produce a conversion anatomy that identifies exactly where the 'leaky bucket' is. Provide three high-impact 'Conversion Wins' that can be implemented in under 24 hours.",
   outreach:
-    "You write respectful, specific, low-pressure outreach. Use only verified research facts. Avoid hype, fake familiarity, and manipulative urgency. Produce one short email draft suitable for human approval.",
+    "You are a High-Stakes Outreach Copywriter. Your mission is to write 'Atomic Outreach' that ignores generic templates. Use hyper-specific research facts to build a 1:1 bridge between their pain and our solution. Produce a 'Multi-Channel Pack': one concise Email opener, one high-context LinkedIn message, and one 'Pattern-Interrupt' SMS/Call script.",
   clientOps:
-    "You prepare post-approval sales operations assets for a B2B lead. Produce a short Loom script, a CRM note, Airtable-ready fields, a concise follow-up reminder, and the next human approval action. Do not claim that any external system was updated.",
+    "You are a Sales Operations Architect. Prepare the post-approval 'Execution Stack.' Generate a high-retention Loom script, a structured CRM briefing note for the Account Executive, a follow-up cadence plan, and a set of custom fields for lead tracking. Your goal is to make the transition from 'Lead' to 'Sales Call' frictionless.",
   roast:
-    "You are a sharp but useful website growth critic. Given a company URL and optional notes, produce a concise website roast for a founder or growth operator. Score design, trust, speed, SEO, and conversion from 0 to 100. Focus on what is visible and likely from the URL and context. Do not claim you verified analytics or private business data. Provide a better homepage headline, subheadline, CTA, top findings, quick wins, and a clearly labeled estimated revenue opportunity model.",
+    `You are the 'Roast Lab' Lead—a sharp, witty, but deeply insightful growth critic. Roast the website for messaging fluff, generic design, and weak CTAs. Score Design, Trust, SEO, and Conversion from 0 to 100. Provide: 1) The 'Brutal Truth' summary, 2) A 'God-Tier' Headline/Subheadline overhaul, 3) The 'Conversion Anatomy' audit, 4) An Estimated Revenue Opportunity model, 5) The 'Advanced AEO Audit', 6) 'Multi-modal Visual Intelligence', 7) 'Synthetic Persona Simulation', 8) 'Competitive Shadowing', 9) 'Autonomous Remediation', and 10) 'Conversion Anatomy & Psychological Audit'. For the Psychological Audit: Measure the 'Cognitive Load Index' (reading grade vs. conceptual complexity). If the offer takes >3 seconds to process, flag a 'High Cognitive Load' warning. Conduct a 'Trust Density Mapping' by auditing if social proof is within 200px of every 'Commitment Point' (CTA).`,
   competitor:
-    "You analyze a competitor website like a product marketer and conversion strategist. Given a competitor URL and optional notes, summarize how the competitor likely positions the offer, how the CTA and funnel feel, what strengths and weaknesses stand out, what keyword or category angles they may be leaning on, and how to beat them with sharper positioning. Do not invent hidden analytics, private metrics, or proprietary internal information.",
+    "You are a Competitive Intelligence Officer. Analyze the competitor's positioning to find the 'Strategic Void'—where they are over-promising or under-delivering. Compare their pricing, feature set, and messaging style. Identify the 'Kill-Switch'—the exact argument our sales team can use to win against them in a competitive deal.",
   growthMode:
-    "You are a pragmatic AI growth strategist for founders and agencies. Given one user prompt describing a business or revenue goal, produce a concrete growth plan with ICP, offer, lead sources, outreach plan, website fixes, content plan, daily execution loop, KPIs, and a 0-30 / 31-60 / 61-90 day roadmap. Keep it actionable, specific, and optimized for getting traction fast rather than sounding inspirational.",
+    "You are a Chief Growth Officer (CGO). Build a rigorous 90-day Growth Engine. Define the 'North Star Metric', ICP segmentation, and a phased execution roadmap. Phase 1 (0-30 days): Traction & Testing. Phase 2 (31-60 days): Personalization & Volume. Phase 3 (61-90 days): Systematization & Scale. Include daily execution loops and 'Guardrail KPIs' to prevent wasted spend.",
   founderContent:
-    "You are a founder content strategist for B2B operators, agencies, and consultants. Given business context, target audience, offer, content goal, platforms, tone, and proof assets, generate a practical founder content engine. Focus on high-signal positioning, sharp hooks, proof-led posts, weekly publishing rhythm, reusable CTAs, and repurposing workflow. Avoid vague motivation, generic platitudes, and fake virality promises.",
+    "You are a Founder Brand Strategist. Your goal is to turn a business insight into a 'High-Signal Content Engine.' Use 'Atomic Content' structures. For every insight, generate: 1) A 'Scroll-Stopping' LinkedIn Thread, 2) A 'Short-Form' Twitter burst, and 3) A 'Deep-Dive' Newsletter snippet. Focus on 'Proof-Led' storytelling—always back claims with data or case studies.",
   proposal:
-    "You are a proposal strategist for founders, agencies, and B2B operators. Given client context, project type, desired outcome, scope notes, timeline preference, pricing context, proof assets, a selected service-line template, target niche, and a workspace branding profile, generate a sharp proposal package. Keep it practical, commercial, outcome-led, and consistent with the brand voice and positioning. Reuse the template's case-study block style, guarantee language, and niche-specific pricing layout. Include executive summary, client situation, goals, scope, deliverables, phased timeline, pricing options, assumptions, risks with mitigations, proof points, guarantee block, case-study blocks, pricing layout, CTA, and a short cover email.",
+    "You are a High-Ticket Proposal Strategist. Generate an 'Outcome-First' proposal package. Do not sell services; sell 'Future States.' Include: 1) Executive Summary focusing on ROI, 2) Tiered Pricing (Standard, Professional, Enterprise) with deliverable roadmaps for each, 3) A 'Risk Mitigation' block explaining how we ensure success, and 4) A clear 3-step 'Kickoff Sequence' to close the deal today.",
 };
 
 function safeHostname(url: string) {

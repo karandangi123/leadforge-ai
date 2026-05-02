@@ -3,10 +3,14 @@ import { google } from "googleapis";
 
 const SCOPES = [
   "https://www.googleapis.com/auth/gmail.compose",
+  "https://www.googleapis.com/auth/gmail.labels",
   "openid",
   "email",
   "profile",
 ];
+
+const GMAIL_COMPOSE_SCOPE = "https://www.googleapis.com/auth/gmail.compose";
+const GMAIL_LABELS_SCOPE = "https://www.googleapis.com/auth/gmail.labels";
 
 export type GoogleOAuthTokenSet = {
   accessToken: string | null;
@@ -24,8 +28,43 @@ export type StoredGoogleConnection = {
   scope?: string | null;
 };
 
+export type GmailLabelSnapshot = {
+  id: string;
+  name: string;
+  type: string;
+  messagesTotal?: number;
+  messagesUnread?: number;
+  threadsTotal?: number;
+  threadsUnread?: number;
+};
+
+export type GmailDraftSnapshot = {
+  id: string;
+  threadId: string | null;
+  internalDate: string | null;
+  subject: string | null;
+  snippet: string | null;
+};
+
+export type GmailWorkspaceSnapshotData = {
+  labels: GmailLabelSnapshot[];
+  recentDrafts: GmailDraftSnapshot[];
+};
+
 export function getGmailComposeScopes() {
   return [...SCOPES];
+}
+
+export function getRequiredGmailScopes() {
+  return [GMAIL_COMPOSE_SCOPE, GMAIL_LABELS_SCOPE];
+}
+
+export function getGmailComposeScope() {
+  return GMAIL_COMPOSE_SCOPE;
+}
+
+export function getGmailLabelsScope() {
+  return GMAIL_LABELS_SCOPE;
 }
 
 export function hasGoogleOAuthCredentials() {
@@ -130,6 +169,63 @@ export async function createGmailDraftFromConnection(
 
   return {
     draft: res.data,
+    tokens,
+  };
+}
+
+export async function fetchGmailWorkspaceSnapshot(
+  connection: StoredGoogleConnection,
+  options?: { maxDrafts?: number },
+) {
+  const { gmail, tokens } = await getAuthorizedGmailClient(connection);
+  const maxDrafts = options?.maxDrafts ?? 10;
+
+  const [labelsResponse, draftsResponse] = await Promise.all([
+    gmail.users.labels.list({ userId: "me" }),
+    gmail.users.drafts.list({ userId: "me", maxResults: maxDrafts }),
+  ]);
+
+  const labels: GmailLabelSnapshot[] = (labelsResponse.data.labels ?? []).map((label) => ({
+    id: label.id ?? "unknown",
+    name: label.name ?? "Unnamed label",
+    type: label.type ?? "system",
+    messagesTotal: label.messagesTotal ?? undefined,
+    messagesUnread: label.messagesUnread ?? undefined,
+    threadsTotal: label.threadsTotal ?? undefined,
+    threadsUnread: label.threadsUnread ?? undefined,
+  }));
+
+  const draftIds = (draftsResponse.data.drafts ?? [])
+    .map((draft) => draft.id)
+    .filter((draftId): draftId is string => Boolean(draftId));
+
+  const recentDrafts: GmailDraftSnapshot[] = await Promise.all(
+    draftIds.map(async (draftId) => {
+      const response = await gmail.users.drafts.get({
+        userId: "me",
+        id: draftId,
+        format: "full",
+      });
+
+      const message = response.data.message;
+      const headers = message?.payload?.headers ?? [];
+      const subjectHeader = headers.find((header: { name?: string | null }) => header.name?.toLowerCase() === "subject");
+
+      return {
+        id: response.data.id ?? draftId,
+        threadId: message?.threadId ?? null,
+        internalDate: message?.internalDate ?? null,
+        subject: subjectHeader?.value ?? null,
+        snippet: message?.snippet ?? null,
+      };
+    }),
+  );
+
+  return {
+    snapshot: {
+      labels,
+      recentDrafts,
+    } satisfies GmailWorkspaceSnapshotData,
     tokens,
   };
 }

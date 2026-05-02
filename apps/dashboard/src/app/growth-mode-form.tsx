@@ -3,7 +3,8 @@
 import { useActionState } from "react";
 import { BarChart3, BriefcaseBusiness, CalendarRange, Sparkles, Target, Workflow } from "lucide-react";
 
-import { executeGrowthMode, saveGrowthModeToPlaybook, type GrowthModeState } from "@/app/actions";
+import { executeGrowthMode, type GrowthModeState } from "@/app/actions/tools";
+import { saveGrowthModeToPlaybook } from "@/app/actions/workspace";
 import { ToolJobStatus } from "@/components/dashboard/tool-job-status";
 import { useAsyncToolJob } from "@/lib/use-async-tool-job";
 
@@ -145,16 +146,33 @@ export function GrowthModeForm() {
 
           <section className="rounded-2xl border border-[#d2cab7] bg-[#fffdf8] p-5">
             <div className="flex items-center gap-2">
-              <Target size={18} className="text-[#176b5d]" />
+              <CalendarRange size={18} className="text-[#176b5d]" />
               <div>
                 <p className="text-xs font-black uppercase text-[#176b5d]">90-day roadmap</p>
-                <h2 className="mt-1 py-0.5 text-2xl font-black leading-tight">Operate the plan in stages</h2>
+                <h2 className="mt-1 py-0.5 text-2xl font-black leading-tight">Phased Execution Plan</h2>
               </div>
             </div>
-            <div className="mt-5 grid gap-4 xl:grid-cols-3">
-              <RoadmapBlock title="Days 0-30" items={result.ninetyDayPlan.days0to30} />
-              <RoadmapBlock title="Days 31-60" items={result.ninetyDayPlan.days31to60} />
-              <RoadmapBlock title="Days 61-90" items={result.ninetyDayPlan.days61to90} />
+            <div className="mt-8 space-y-0">
+              <TimelinePhase 
+                phase="Phase 1: Foundation" 
+                duration="Days 0-30" 
+                items={result.ninetyDayPlan.days0to30} 
+                icon="🚀"
+                isFirst
+              />
+              <TimelinePhase 
+                phase="Phase 2: Optimization" 
+                duration="Days 31-60" 
+                items={result.ninetyDayPlan.days31to60} 
+                icon="📈"
+              />
+              <TimelinePhase 
+                phase="Phase 3: Expansion" 
+                duration="Days 61-90" 
+                items={result.ninetyDayPlan.days61to90} 
+                icon="🌍"
+                isLast
+              />
             </div>
           </section>
 
@@ -163,7 +181,7 @@ export function GrowthModeForm() {
               <BarChart3 size={18} className="text-[#176b5d]" />
               <div>
                 <p className="text-xs font-black uppercase text-[#176b5d]">Generation mode</p>
-                <h2 className="mt-1 py-0.5 text-xl font-black leading-tight">{result.mode === "openai" ? "Live AI pass" : "Fallback demo pass"}</h2>
+                <h2 className="mt-1 py-0.5 text-xl font-black leading-tight">{result.mode === "fallback" ? "Fallback demo pass" : "Live AI pass"}</h2>
               </div>
             </div>
             <p className="mt-3 text-sm leading-6 text-[#4f5a53]">{result.model ?? "demo-v1"}</p>
@@ -270,15 +288,47 @@ function KpiCard({ label, target }: { label: string; target: string }) {
   );
 }
 
-function RoadmapBlock({ title, items }: { title: string; items: string[] }) {
+function TimelinePhase({ 
+  phase, 
+  duration, 
+  items, 
+  icon,
+  isFirst,
+  isLast 
+}: { 
+  phase: string; 
+  duration: string; 
+  items: string[]; 
+  icon: string;
+  isFirst?: boolean;
+  isLast?: boolean;
+}) {
   return (
-    <div className="rounded-xl border border-[#e3dccd] bg-white p-4">
-      <p className="text-sm font-black text-[#1e2521]">{title}</p>
-      <ul className="mt-3 space-y-2 text-sm leading-6 text-[#4f5a53]">
-        {items.map((item) => (
-          <li key={item}>• {item}</li>
-        ))}
-      </ul>
+    <div className="relative flex gap-6 pb-8">
+      {!isLast && (
+        <div className="absolute left-6 top-10 h-full w-px bg-[#d2cab7]" />
+      )}
+      <div className="relative z-10 flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-[#d2cab7] bg-white text-xl shadow-sm">
+        {icon}
+      </div>
+      <div className="flex-1 pt-1">
+        <div className="flex items-center gap-3">
+          <h3 className="text-lg font-black text-[#1e2521]">{phase}</h3>
+          <span className="rounded-full bg-[#f3faf7] px-3 py-1 text-[10px] font-black uppercase tracking-wider text-[#176b5d]">
+            {duration}
+          </span>
+        </div>
+        <ul className="mt-4 grid gap-3 sm:grid-cols-2">
+          {items.map((item) => (
+            <li key={item} className="rounded-xl border border-[#e3dccd] bg-white p-4 text-sm leading-6 text-[#4f5a53] shadow-sm">
+              <p className="flex gap-3">
+                <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[#176b5d]" />
+                {item}
+              </p>
+            </li>
+          ))}
+        </ul>
+      </div>
     </div>
   );
 }

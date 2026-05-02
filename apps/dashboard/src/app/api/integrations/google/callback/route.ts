@@ -2,7 +2,10 @@ import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 import { getPrisma } from "@leadforge/db";
 import { exchangeGoogleOAuthCode, getGoogleAccountProfile } from "@leadforge/integrations";
-import { getOrCreateDefaultWorkspace, GOOGLE_PROVIDER } from "@/lib/workspace";
+import { auth } from "@/auth";
+import { syncWorkspaceGmailData } from "@/lib/gmail-workspace-sync";
+import { syncGoogleAccountToWorkspace } from "@/lib/google-workspace";
+import { getActiveWorkspace } from "@/lib/workspace";
 
 const GOOGLE_OAUTH_COOKIE = "leadforge-google-oauth";
 
@@ -34,58 +37,43 @@ export async function GET(request: NextRequest) {
     });
 
     const prisma = getPrisma();
-    const workspace = await getOrCreateDefaultWorkspace();
-    const existingConnection = await prisma.workspaceIntegrationConnection.findUnique({
-      where: {
-        workspaceId_provider: {
-          workspaceId: workspace.id,
-          provider: GOOGLE_PROVIDER,
-        },
-      },
-    });
+    const workspace = await getActiveWorkspace();
+    const session = await auth();
 
     if (!profile.email || !profile.verifiedEmail) {
       cookieStore.delete(GOOGLE_OAUTH_COOKIE);
       return NextResponse.redirect(new URL("/?view=setup&run=gmail-oauth-invalid", request.url));
     }
 
-    await prisma.workspaceIntegrationConnection.upsert({
-      where: {
-        workspaceId_provider: {
-          workspaceId: workspace.id,
-          provider: GOOGLE_PROVIDER,
-        },
-      },
-      update: {
-        status: "CONNECTED",
-        externalAccountId: profile.id,
-        externalAccountEmail: profile.email,
+    await syncGoogleAccountToWorkspace(prisma, {
+      workspaceId: workspace.id,
+      userId: session?.user?.id ?? null,
+      externalAccountId: profile.id,
+      externalAccountEmail: profile.email,
+      tokens: {
         accessToken: tokens.accessToken,
-        refreshToken: tokens.refreshToken ?? existingConnection?.refreshToken ?? null,
+        refreshToken: tokens.refreshToken,
         tokenType: tokens.tokenType,
         scope: tokens.scope,
         expiresAt: tokens.expiryDate ? new Date(tokens.expiryDate) : null,
-        lastSyncedAt: new Date(),
-        lastError: null,
       },
-      create: {
-        workspaceId: workspace.id,
-        provider: GOOGLE_PROVIDER,
-        status: "CONNECTED",
-        externalAccountId: profile.id,
-        externalAccountEmail: profile.email,
-        accessToken: tokens.accessToken,
-        refreshToken: tokens.refreshToken ?? existingConnection?.refreshToken ?? null,
-        tokenType: tokens.tokenType,
-        scope: tokens.scope,
-        expiresAt: tokens.expiryDate ? new Date(tokens.expiryDate) : null,
-        lastSyncedAt: new Date(),
-        lastError: null,
-      },
+      source: "google_reauth_flow",
     });
 
+    let run = "gmail-oauth-connected";
+
+    try {
+      await syncWorkspaceGmailData(prisma, {
+        workspaceId: workspace.id,
+        userId: session?.user?.id ?? null,
+        trigger: "google_reauth_flow",
+      });
+    } catch {
+      run = "gmail-sync-partial";
+    }
+
     cookieStore.delete(GOOGLE_OAUTH_COOKIE);
-    return NextResponse.redirect(new URL(withRun(parsedState.returnTo, "gmail-oauth-connected"), request.url));
+    return NextResponse.redirect(new URL(withRun(parsedState.returnTo, run), request.url));
   } catch {
     cookieStore.delete(GOOGLE_OAUTH_COOKIE);
     return NextResponse.redirect(new URL("/?view=setup&run=gmail-oauth-failed", request.url));

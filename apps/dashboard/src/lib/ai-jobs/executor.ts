@@ -4,12 +4,15 @@ import {
   JobKind,
   JobStatus,
   LeadStatus,
+  AgentRunStatus,
   type PrismaClient,
 } from "@leadforge/db";
 import { auditWebsite, draftOutreach, prepareClientOps, researchLead } from "@leadforge/agents";
 import { roastWebsite } from "@leadforge/agents";
 import { generateFounderContent, generateProposal, runGrowthMode, spyCompetitor } from "@leadforge/agents";
 import { evaluateOutreach, evaluateResearch, evaluateWebsiteAudit } from "@leadforge/evals";
+import { WebCrawler } from "@leadforge/crawler";
+import { BillingService } from "@leadforge/billing";
 import { getAiRuntimeMode, type RuntimeMode } from "../runtime-mode";
 import { readRecord, serializeAsyncJob, type AsyncJobSnapshot } from "./types";
 
@@ -136,8 +139,39 @@ async function runResearchJob(
   if (!lead) {
     throw new Error("Research job is missing its lead context.");
   }
-  const agentResult = await researchLead(buildLeadAgentInput(lead, playbook));
+  const agentResult = await researchLead({ 
+    ...buildLeadAgentInput(lead, playbook), 
+    workspaceId: lead.workspaceId 
+  });
   const evaluation = evaluateResearch(agentResult.data);
+
+  // Normalise citations: support both old string[] and new ResearchCitation[]
+  const citationUrls: string[] = Array.isArray(agentResult.data.citations)
+    ? agentResult.data.citations.map((c: unknown) => typeof c === "string" ? c : (c as { url: string }).url ?? "")
+    : [];
+
+  const researchPayload = {
+    status: AgentRunStatus.SUCCEEDED,
+    summary: agentResult.data.summary,
+    confidence: agentResult.data.confidence,
+    citations: agentResult.data.citations as unknown as object,
+    signals: {
+      // New structured fields
+      painPoints: agentResult.data.painPoints,
+      buyingSignals: agentResult.data.buyingSignals,
+      personalizationSnippets: agentResult.data.personalizationSnippets,
+      company: agentResult.data.company,
+      contact: agentResult.data.contact,
+      outreachAngle: agentResult.data.outreachAngle,
+      hypothesisStatement: agentResult.data.hypothesisStatement,
+      competitiveGap: agentResult.data.competitiveGap,
+      approval: agentResult.data.approval,
+      // Legacy compat
+      segment: agentResult.data.signals.segment,
+      painPoint: agentResult.data.signals.painPoint,
+      recommendedAngle: agentResult.data.signals.recommendedAngle,
+    } as unknown as object,
+  };
 
   await prisma.$transaction(async (tx) => {
     await tx.lead.update({
@@ -147,13 +181,7 @@ async function runResearchJob(
         fitScore: agentResult.data.fitScore,
         nextAction: agentResult.data.nextAction,
         researchRuns: {
-          create: {
-            status: "SUCCEEDED",
-            summary: agentResult.data.summary,
-            confidence: agentResult.data.confidence,
-            citations: agentResult.data.citations,
-            signals: agentResult.data.signals,
-          },
+          create: researchPayload,
         },
         agentTraces: {
           create: {
@@ -161,7 +189,15 @@ async function runResearchJob(
             status: "SUCCEEDED",
             model: agentResult.model,
             input: { leadId: lead.id, company: lead.company, website: lead.website, jobId },
-            output: { ...agentResult.data, mode: agentResult.mode },
+            output: { 
+              ...agentResult.data, 
+              mode: agentResult.mode,
+              citationCount: citationUrls.length,
+              painPointCount: agentResult.data.painPoints?.length ?? 0,
+              buyingSignalCount: agentResult.data.buyingSignals?.length ?? 0,
+              approvalStatus: agentResult.data.approval?.approvalStatus,
+              isAutoApprovable: agentResult.data.approval?.isAutoApprovable,
+            },
             tokenCount: agentResult.tokenCount,
             latencyMs: agentResult.latencyMs,
           },
@@ -178,14 +214,75 @@ async function runResearchJob(
     });
 
     await markJobSucceeded(tx, jobId, {
-      message: "Research completed and lead context was updated.",
+      message: "Research completed with source citations, pain points, buying signals, and approval gate.",
       result: {
         nextAction: agentResult.data.nextAction,
         fitScore: agentResult.data.fitScore,
         confidence: agentResult.data.confidence,
+        citationCount: citationUrls.length,
+        painPointCount: agentResult.data.painPoints?.length ?? 0,
+        buyingSignalCount: agentResult.data.buyingSignals?.length ?? 0,
+        approvalStatus: agentResult.data.approval?.approvalStatus ?? "pending",
+        isAutoApprovable: agentResult.data.approval?.isAutoApprovable ?? false,
       },
     });
   });
+
+  // Dynamic Sequence Enrollment based on AI Research Dossier
+  try {
+    const researchSegment = agentResult.data.signals.segment || agentResult.data.company?.primaryMarket;
+    if (researchSegment) {
+      const activeSequences = await prisma.outreachSequence.findMany({
+        where: { 
+          workspaceId: lead.workspaceId,
+          isActive: true,
+          targetSegment: researchSegment
+        },
+        include: { steps: { orderBy: { stepNumber: "asc" } } }
+      });
+
+      for (const sequence of activeSequences) {
+        if (sequence.steps.length > 0) {
+          const firstStep = sequence.steps[0];
+          // Calculate next step ms
+          const ms = (firstStep.delayDays * 24 * 60 * 60 + firstStep.delayHours * 60 * 60) * 1000;
+          const nextStepAt = new Date(Date.now() + ms);
+
+          await prisma.sequenceEnrollment.upsert({
+            where: { sequenceId_leadId: { sequenceId: sequence.id, leadId: lead.id } },
+            update: {},
+            create: {
+              sequenceId: sequence.id,
+              leadId: lead.id,
+              currentStep: 0,
+              status: "PENDING",
+              nextStepAt,
+            }
+          });
+
+          await prisma.outreachSequence.update({
+            where: { id: sequence.id },
+            data: { totalEnrolled: { increment: 1 } }
+          });
+
+          await prisma.agentTrace.create({
+            data: {
+              leadId: lead.id,
+              agentName: "Sequence Engine",
+              status: "SUCCEEDED",
+              input: { sequenceId: sequence.id, segment: researchSegment, action: "auto_enroll" },
+              output: {
+                message: `Lead dynamically enrolled into sequence "${sequence.name}" based on research dossier segment match.`,
+                nextStepAt: nextStepAt.toISOString()
+              }
+            }
+          });
+        }
+      }
+    }
+  } catch (error) {
+    console.error("Failed to dynamically enroll lead in sequence after research:", error);
+  }
 }
 
 async function runWebsiteAuditJob(
@@ -197,7 +294,28 @@ async function runWebsiteAuditJob(
   if (!lead) {
     throw new Error("Website audit job is missing its lead context.");
   }
-  const agentResult = await auditWebsite(buildLeadAgentInput(lead, playbook));
+
+  // Advanced: Perform crawl orchestration with Entitlement check
+  let crawlData: any = null;
+  if (lead.website) {
+    const hasEntitlement = await BillingService.hasEntitlement(lead.workspaceId, "ADVANCED_CRAWL");
+    if (hasEntitlement) {
+      try {
+        crawlData = await WebCrawler.crawl(lead.website, { screenshot: true });
+        await BillingService.recordUsage(lead.workspaceId, "ADVANCED_CRAWL");
+      } catch (crawlError) {
+        console.warn(`Crawl failed for ${lead.website}:`, crawlError);
+      }
+    } else {
+      console.log(`Workspace ${lead.workspaceId} does not have ADVANCED_CRAWL entitlement.`);
+    }
+  }
+
+  const agentResult = await auditWebsite({ 
+    ...buildLeadAgentInput(lead, playbook), 
+    workspaceId: lead.workspaceId,
+    crawlData 
+  });
   const evaluation = evaluateWebsiteAudit(agentResult.data);
 
   await prisma.$transaction(async (tx) => {
@@ -224,7 +342,7 @@ async function runWebsiteAuditJob(
             agentName: "Website Audit Agent",
             status: "SUCCEEDED",
             model: agentResult.model,
-            input: { leadId: lead.id, website: lead.website, jobId },
+            input: { leadId: lead.id, website: lead.website, jobId, crawlSummary: crawlData?.title },
             output: { ...agentResult.data, mode: agentResult.mode },
             tokenCount: agentResult.tokenCount,
             latencyMs: agentResult.latencyMs,
@@ -242,10 +360,11 @@ async function runWebsiteAuditJob(
     });
 
     await markJobSucceeded(tx, jobId, {
-      message: "Website audit completed and scores were saved.",
+      message: "Website audit completed with crawl-enhanced data and scores were saved.",
       result: {
         nextAction: agentResult.data.nextAction,
         overallScore: agentResult.data.overallScore,
+        crawlLatency: crawlData?.latencyMs,
       },
     });
   });

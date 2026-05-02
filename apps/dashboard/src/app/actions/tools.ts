@@ -12,46 +12,48 @@ import {
   type CompetitorSpyOutput,
   type GrowthModeOutput,
   type FounderContentOutput,
-  type ProposalGeneratorOutput
+  type ProposalGeneratorOutput,
+  type AgentResult
 } from "@leadforge/agents";
 import { executeAsyncJobById } from "@/lib/ai-jobs/executor";
 import { enqueueAsyncJob } from "@/lib/ai-jobs/queue";
 import { getAiRuntimeMode, hasRedisUrl } from "@/lib/runtime-mode";
-import { getOrCreateDefaultWorkspace } from "@/lib/workspace";
+import { getActiveWorkspace } from "@/lib/workspace";
 
 export type WebsiteRoastState = {
   message: string;
   jobId: string | null;
-  result: WebsiteRoastOutput | null;
+  result: (WebsiteRoastOutput & Pick<AgentResult<any>, "mode" | "model">) | null;
 };
 
 export type CompetitorSpyState = {
   message: string;
   jobId: string | null;
-  result: CompetitorSpyOutput | null;
+  result: (CompetitorSpyOutput & Pick<AgentResult<any>, "mode" | "model">) | null;
 };
 
 export type GrowthModeState = {
   message: string;
   jobId: string | null;
-  result: GrowthModeOutput | null;
+  result: (GrowthModeOutput & Pick<AgentResult<any>, "mode" | "model">) | null;
 };
 
 export type FounderContentState = {
   message: string;
   jobId: string | null;
-  result: FounderContentOutput | null;
+  result: (FounderContentOutput & Pick<AgentResult<any>, "mode" | "model">) | null;
 };
 
 export type ProposalGeneratorState = {
   message: string;
   jobId: string | null;
-  result: ProposalGeneratorOutput | null;
+  result: (ProposalGeneratorOutput & Pick<AgentResult<any>, "mode" | "model">) | null;
 };
 
 const websiteRoastSchema = z.object({
   url: z.string().trim().url(),
   notes: z.string().trim().max(1000).optional(),
+  persona: z.enum(["founder", "cfo", "dev", "marketing"]).optional(),
 });
 
 const competitorSpySchema = z.object({
@@ -90,7 +92,11 @@ export async function runWebsiteRoast(_prevState: WebsiteRoastState, formData: F
     fallbackMessage: "Roast complete.",
     queuedMessage: "Roast queued. Live updates will appear here as the job runs.",
     inline: async () => {
-      const result = await roastWebsite({ url: parsed.data.url, notes: parsed.data.notes });
+      const result = await roastWebsite({ 
+        url: parsed.data.url, 
+        notes: parsed.data.notes, 
+        persona: parsed.data.persona 
+      });
       return { ...result.data, mode: result.mode, model: result.model };
     },
   });
@@ -184,7 +190,7 @@ async function runWorkspaceToolJob<TInput extends Record<string, unknown>, TResu
   }
 
   const prisma = getPrisma();
-  const workspace = await getOrCreateDefaultWorkspace();
+  const workspace = await getActiveWorkspace();
   const executionMode = getAiRuntimeMode();
   const job = await prisma.asyncJob.create({
     data: {

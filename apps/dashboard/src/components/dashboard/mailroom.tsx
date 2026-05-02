@@ -16,19 +16,8 @@ export function Mailroom({
 }) {
   const emailApprovals = approvalQueue.filter((item) => item.assetType === "EMAIL");
   const gmailDraftEvents = traceViewer.filter((trace) => trace.agentName === "Gmail Bridge");
-  const gmailConfigured = gmailConnection.status === "connected";
-  const gmailStatusLabel =
-    gmailConnection.status === "connected"
-      ? gmailConnection.connectedEmail
-        ? `Connected to ${gmailConnection.connectedEmail}`
-        : "Google Gmail connected"
-      : gmailConnection.status === "missing_oauth_config"
-        ? "OAuth app not configured"
-        : gmailConnection.status === "expired"
-          ? "Connection expired"
-          : gmailConnection.status === "error"
-            ? "Connection needs attention"
-            : "Google Gmail not connected";
+  const gmailConfigured = gmailConnection.isActive;
+  const gmailStatusLabel = gmailConnection.statusLabel;
 
   return (
     <div className="grid gap-8 xl:grid-cols-[1fr_0.8fr] animate-fade-in">
@@ -111,9 +100,24 @@ export function Mailroom({
             <p className="mt-2 text-xs text-[#687169]">
               {gmailConfigured
                 ? "Approved outreach can be turned into Gmail drafts from the lead detail page."
-                : "Open Setup to connect Google Gmail before trying to create drafts."}
+                : "Open Setup to inspect status and run the Gmail recovery flow before trying to create drafts."}
             </p>
+            <div className="mt-4 grid gap-3 sm:grid-cols-3">
+              <div className="rounded-xl border border-[#e3dccd] bg-[#fffdf8] p-3">
+                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#687169]">Labels</p>
+                <p className="mt-1 text-lg font-black text-[#1e2521]">{gmailConnection.labelCount}</p>
+              </div>
+              <div className="rounded-xl border border-[#e3dccd] bg-[#fffdf8] p-3">
+                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#687169]">Recent drafts</p>
+                <p className="mt-1 text-lg font-black text-[#1e2521]">{gmailConnection.recentDraftCount}</p>
+              </div>
+              <div className="rounded-xl border border-[#e3dccd] bg-[#fffdf8] p-3">
+                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#687169]">Snapshot</p>
+                <p className="mt-1 text-sm font-black text-[#1e2521]">{gmailConnection.snapshotStatus ?? "Not started"}</p>
+              </div>
+            </div>
             {gmailConnection.lastError ? <p className="mt-3 text-xs font-bold uppercase text-[#b2412d]">{gmailConnection.lastError}</p> : null}
+            {gmailConnection.snapshotError ? <p className="mt-3 text-xs font-bold uppercase text-[#b2412d]">{gmailConnection.snapshotError}</p> : null}
           </div>
         </section>
 

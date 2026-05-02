@@ -1,71 +1,147 @@
-# LeadForge AI Architecture
+# LeadForge AI: Final Architecture & Product Advancement Plan
+**Version:** 1.0.0-PRO  
+**Status:** Approved for Implementation  
+**Role:** Master Architect / CTO
 
-LeadForge AI is structured as a monorepo with one shipped app today and a small set of real workspace packages. The current goal is repository trustworthiness: contributors should be able to clone the repo, understand the boundaries, and get to a green local build without reverse-engineering stale paths.
+---
 
-## Current Modules
+## 1. System Identity & Mission
+LeadForge AI is an operator-first Revenue Operating System (ROS) designed to bridge the gap between AI research and professional outbound execution. Unlike "stealth" automation tools, LeadForge prioritizes a **Human-in-the-Loop (HITL)** boundary, ensuring every AI-generated asset is reviewed, edited, and approved by a human operator before hitting production environments (Gmail, CRM, etc.).
 
-- `apps/dashboard`: dashboard, lead workspace, approval queue, settings, and growth surfaces
-- `packages/agents`: research, audit, outreach, reviewer, follow-up, and outcome agents
-- `packages/db`: Prisma schema, generated client, typed database helpers
-- `packages/evals`: output scoring and quality checks
-- `packages/integrations`: Gmail, Airtable, HubSpot, Salesforce, Slack, Notion
+### Core Philosophy
+- **Visible Outputs:** Every AI step (Research, Audit, Outreach) produces a usable, editable artifact.
+- **Trust via Traces:** Full observability of model usage, costs, and evaluations.
+- **Demo-First Resilience:** A functional "Demo Mode" that allows product exploration without infrastructure friction.
+- **Compliance by Design:** No unsafe scraping; explicit source policies for discovery.
 
-The repository does not currently ship a worker app. Any docs or CI assumptions about `apps/worker`, `develop`, or legacy root-level `src/` and `prisma/` paths should be treated as stale unless they have been reintroduced intentionally.
+---
 
-## Core Flow
+## 2. Product Blueprint: The 14 Layers of LeadForge
+LeadForge is structured into 14 distinct functional layers that move the user from market understanding to closed revenue.
 
-1. A lead is created or imported.
-2. The research agent gathers company facts, ICP signals, and source citations.
-3. The website audit agent scores conversion, clarity, speed, trust, and SEO basics.
-4. The outreach agent drafts messages using approved prompt versions.
-5. The reviewer agent checks factuality, brand voice, and spam risk.
-6. A human approves, edits, or rejects every external action.
-7. Outcomes flow back into analytics and eval datasets.
+### I. Acquisition & Entry Layers
+1. **Landing & Demo Layer:** Clear value prop, interactive demo board, and "Try before you buy" growth tools.
+2. **Setup & Context Layer:** Workspace onboarding, ICP definition, and Playbook creation.
 
-## Database Layer
+### II. Discovery & Pipeline Layers
+3. **Lead Discovery Layer:** Autonomous query planning, candidate scoring, and "Save to Pipeline" workflow.
+4. **Pipeline Command Layer:** Visual Kanban board with stage counts, fit/audit metrics, and owner assignments.
+5. **Lead System-of-Record:** Detailed lead workspaces with unified activity timelines and context editors.
 
-The app uses Prisma 7 with a PostgreSQL driver adapter. The schema lives in `packages/db/prisma/schema.prisma`, the Prisma client helper lives in `packages/db/src/prisma.ts`, and dashboard lead reads live in `apps/dashboard/src/lib/leads.ts`.
+### III. Intelligence & Asset Layers
+6. **AI Research Layer:** Multi-signal company research with citation-backed summaries.
+7. **Website Audit (Roast) Layer:** 5-point conversion scoring (Clarity, Trust, Conversion, SEO, Speed) and messaging rewrites.
+8. **Competitor Intelligence Layer:** Positioning analysis, CTA patterns, and battlecard generation.
+9. **Outreach Drafting Layer:** Personalization-first assets (Email, Loom scripts, CRM notes).
 
-The initial dashboard is intentionally resilient: if `DATABASE_URL` is missing or the database is unreachable, the UI falls back to seeded leads. Once Postgres is connected and migrations are applied, the Add Lead form writes real records and the table reads from the database.
+### IV. Governance & Learning Layers
+10. **Approval Layer:** Centralized review queue with diff-views and audit trails.
+11. **Client Ops Layer:** Prepared sync payloads for Gmail (drafts), Airtable, and CRM.
+12. **Outcome Learning Layer:** Event logging (Sent, Replied, Won/Lost) and strategy feedback loops.
+13. **Growth Strategy Layer:** "One-Prompt Growth Mode" for 90-day execution plans.
+14. **Trust & Analytics Layer:** Trace viewer, eval pass rates, and latency/cost monitoring.
 
-The lead detail route is `/leads/[leadId]`. It loads one lead plus `ResearchRun`, `WebsiteAudit`, `OutreachDraft`, `Approval`, and `AgentTrace` records. Seeded lead IDs keep the demo useful before a database is connected.
+---
 
-Lead actions live under `apps/dashboard/src/app/actions`. They call the agent runtime in `packages/agents`, the evaluation helpers in `packages/evals`, and the Gmail adapter in `packages/integrations`. If `OPENAI_API_KEY` is missing, the agent runner returns deterministic fallback outputs so the workflow remains testable.
+## 3. Modular Monorepo Architecture
+To scale toward v1.0, the codebase will transition to a **Turborepo** monorepo structure.
 
-## Workspace Playbook Layer
+```text
+leadforge-ai/
+├── apps/
+│   ├── web/                # Next.js 16 App Router (Primary UI)
+│   └── worker/             # Background job processor (BullMQ/Redis)
+├── packages/
+│   ├── database/           # Prisma Client, Migrations, and Seeders
+│   ├── agents/             # AI Agent logic (Research, Audit, Outreach)
+│   ├── ui/                 # Shared React components & Design System
+│   ├── evals/              # Prompt evaluation logic & CI checks
+│   ├── integrations/       # Provider adapters (Gmail, HubSpot, Airtable)
+│   └── logger/             # Unified tracing and observability
+├── .github/                # CI/CD Workflows
+└── docs/                   # Engineering & Product Documentation
+```
 
-The `WorkspacePlaybook` model stores the product, ideal customer profile, target industries, solved pains, approved proof points, positioning, and outreach tone. The dashboard includes a Product + ICP setup wizard, and agent actions pass the saved playbook into research, website audit, outreach, and client-ops runs. This makes LeadForge start from business context instead of a blank manual lead table.
+---
 
-## Lead Discovery Layer
+## 4. Technical Stack & Versioning
+| Component | Technology | Version |
+| :--- | :--- | :--- |
+| **Framework** | Next.js (App Router) | 16.x |
+| **Database** | PostgreSQL | 16.x |
+| **ORM** | Prisma | 7.x |
+| **Styling** | Vanilla CSS + Tailwind | Project Standard |
+| **Runtime** | Node.js | 20.x LTS |
+| **AI Orchestration** | OpenAI SDK | Latest |
+| **Validation** | Zod | 3.x |
+| **Icons** | Lucide React | Latest |
+| **Caching/Jobs** | Redis / BullMQ | 7.x |
 
-The `DiscoveryRun` and `CandidateLead` models power the Find Leads workflow. An operator enters a target market, the app creates a compliant query plan, records allowed and blocked source categories, and generates scored candidate companies before anything is saved to the lead pipeline.
+---
 
-Discovery is intentionally conservative. Safe source categories include company websites, search snippets, public directories, GitHub organisations, job posts, news pages, and public tech hints. The product explicitly blocks undetectable scraping, login-gated scraping, CAPTCHA bypass, and stealth LinkedIn automation. LinkedIn data should enter the system only through a user-approved manual import.
+## 5. Security & Compliance Framework
+LeadForge implements enterprise-grade safety boundaries:
+- **HITL Enforcement:** No external API side effects occur without explicit human approval.
+- **Data Privacy:** Local `.env.local` management for OpenAI keys; no centralized key storage in v0.x.
+- **Input Sanitization:** Strict Zod schema validation for every server action.
+- **Audit Trails:** Every operator action and agent trace is recorded with timestamps and actor IDs.
+- **Compliance Policy:** Explicit "LinkedIn-Manual-Only" policy to protect user accounts.
 
-Saving a candidate creates a normal `Lead` record with the candidate's evidence, fit score, source type, initial research run, and trace. This keeps discovery auditable and keeps the same human-review path as manually added leads.
+---
 
-## Client Operations Layer
+## 6. Git Flow & Development Standards
+The repository follows a professional multi-branch strategy:
 
-The next client-ready step prepares external work without performing unsafe side effects. `prepareClientOperations` generates a Loom script, CRM note, payload stubs, follow-up reminders, approval items, and traces. These records live in `OutreachDraft`, `IntegrationSync`, and `FollowUpReminder` so future provider adapters can promote them into real actions after human approval.
+- **`main`**: Production-ready, stable code only. Tagged releases (e.g., `v1.0.0`).
+- **`develop`**: Primary integration branch. All feature branches merge here.
+- **`feature/*`**: Isolated feature development (e.g., `feature/roast-lab`).
+- **`chore/*`**: Maintenance, refactoring, and repo restructuring.
+- **`fix/*`**: Bug fixes.
+- **`release/vX.Y`**: Stabilization branches for final testing before merging to `main`.
 
-Reviewer actions keep this boundary explicit. Approving prepared work marks pending approvals as approved, moves ready sync payloads to an approved state, updates the lead's next action, and writes a reviewer trace. Rejecting blocks sync payloads and moves the lead back into revision without contacting external services. The only real provider path in scope for this phase is Gmail draft creation, and it must never auto-send.
+### Commit Standards
+Follow **Conventional Commits**:
+- `feat:` (new feature)
+- `fix:` (bug fix)
+- `chore:` (maintenance)
+- `docs:` (documentation changes)
+- `refactor:` (code restructuring)
 
-## Outcome Learning Layer
+---
 
-Outcome events close the feedback loop without requiring live email or CRM integrations. Operators can record `EMAIL_SENT`, `REPLIED`, `MEETING_BOOKED`, `WON`, and `LOST` signals from the lead workspace. Each event updates the lead's next action, writes an `OutcomeEvent`, and records an `Outcome Learning Agent` trace. The dashboard summarizes reply rate, meetings, and wins so future analytics can compare outcomes against fit scores, audit scores, prompts, and agent evaluations.
+## 7. CI/CD & DevOps Strategy
+### Phase 1: Automation (Current)
+- **Linting:** `eslint` checks on every PR.
+- **Build Verification:** `npm run build` on every PR.
+- **Type Safety:** `tsc` verification.
 
-## Agent Analytics Layer
+### Phase 2: Agent Quality (v0.6.0+)
+- **Prompt Evals:** CI-based evaluation of agent outputs against benchmarks.
+- **Schema Validation:** Automated tests for structured output contracts.
 
-The dashboard derives operational analytics from saved leads, agent traces, evaluations, and outcome events. The Agent Intelligence section surfaces trace coverage, eval pass rate, average latency, learning-signal volume, and risk/opportunity signals. This keeps the MVP useful before a dedicated warehouse or analytics service exists.
+### Phase 3: Deployment
+- **Staging:** Automatic deployment to staging on merge to `develop`.
+- **Production:** Manual release to production on merge to `main`.
 
-## Evaluation Layer
+---
 
-Agent quality checks live in `packages/evals/src/evaluations.ts`. Each research, website audit, and outreach action creates an `AgentEvaluation` record with a score, pass/fail status, and check-level report. The lead detail page displays these in a Quality Evals panel so operators can see why an output is ready or needs review.
+## 8. Release Roadmap: v0.1.0 to v1.0.0
+| Version | Milestone | Key Features |
+| :--- | :--- | :--- |
+| **v0.1.0** | Core Workflow | Pipeline, Research, Audit, Approvals, Demo Mode. |
+| **v0.3.0** | Intake & Disc. | CSV Import, Autonomous Discovery, Candidate Review. |
+| **v0.5.0** | Viral Strategy | Roast Lab, Competitor Spy, Growth Mode, Public Funnel. |
+| **v0.7.0** | Observability | Trace Viewer, Prompt Versioning, CI Evals, Cost Analytics. |
+| **v1.0.0** | OSS Release | Monorepo Split, Self-Hosting Guide, Stable API. |
 
-## Production Principles
+---
 
-- Human approval before email, CRM, or webhook side effects
-- Trace every agent decision, tool call, model, cost, and error
-- Store prompt versions and run evals before deployment
-- Treat scraped websites and user-provided text as untrusted input
-- Keep integrations plugin-shaped so contributors can add providers cleanly
+## 9. Verification & Quality Assurance
+### Testing Matrix
+- **User Flow Tests:** Onboarding -> Playbook -> Lead -> Approval -> Outcome.
+- **Parity Tests:** Ensure Demo Mode behaves identically to Database Mode (minus persistence).
+- **Security Tests:** Verify Zod validation and HITL blocks.
+- **Agent Tests:** Factuality and coverage scores for Research/Audit agents.
+
+---
+*Created by LeadForge Architect Persona*

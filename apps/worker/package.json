@@ -2,7 +2,8 @@
   "name": "apps-worker",
   "private": true,
   "scripts": {
-    "dev": "tsx watch src/index.ts",
+    "dev": "tsx watch --env-file=../../.env src/index.ts",
+
     "worker": "tsx src/index.ts",
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },

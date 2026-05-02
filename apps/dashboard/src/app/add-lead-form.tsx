@@ -1,6 +1,6 @@
 import { Plus, Sparkles } from "lucide-react";
 
-import { addLead, createSampleLead } from "@/app/actions";
+import { addLead, createSampleLead } from "@/app/actions/leads";
 import { CsvImportForm } from "@/app/csv-import-form";
 
 export function AddLeadForm({

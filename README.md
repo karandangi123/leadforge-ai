@@ -1,295 +1,118 @@
-# ⚡ LeadForge AI
+# ⚡️ LeadForge AI: The Autonomous RevOps Engine
 
-> Human-in-the-loop AI RevOps Command Center for lead discovery, deep research, website audits, outreach preparation, approvals, and growth intelligence.
+[![Security Scan](https://github.com/karandangi123/leadforge-ai/actions/workflows/security.yml/badge.svg)](https://github.com/karandangi123/leadforge-ai/actions/workflows/security.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-[![Next.js](https://img.shields.io/badge/Next.js-16-black?logo=next.js)](https://nextjs.org/)
-[![React](https://img.shields.io/badge/React-19-61dafb?logo=react)](https://react.dev/)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5-3178c6?logo=typescript)](https://www.typescriptlang.org/)
-[![Prisma](https://img.shields.io/badge/Prisma-7-2D3748?logo=prisma)](https://www.prisma.io/)
-[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Database-336791?logo=postgresql)](https://www.postgresql.org/)
-[![Security: Gitleaks](https://img.shields.io/badge/Security-Gitleaks-brightgreen.svg)](https://github.com/gitleaks/gitleaks)
-[![License: MIT](https://img.shields.io/badge/License-MIT-gray.svg)](LICENSE)
-[![Live Demo](https://img.shields.io/badge/Live-Demo-blueviolet)](https://leadforge-ai-weld.vercel.app)
+**LeadForge AI** is an investor-grade, open-core platform designed to automate high-scale, multi-channel outbound growth. Built with a focus on security, scalability, and agentic intelligence, it empowers RevOps teams to build autonomous sales pipelines that research, audit, and engage leads with founder-level precision.
 
----
-
-## 🌐 Live Demo
-
-👉 [https://leadforge-ai-weld.vercel.app](https://leadforge-ai-weld.vercel.app)
-
----
-
-# 🚀 Why LeadForge AI Exists
-
-Most AI sales tools optimize for one thing:
-
-**Send more messages faster.**
-
-That usually leads to:
-
-* weak personalization
-* shallow lead research
-* no human review
-* unsafe automation
-* poor trust with prospects
-* zero learning loop
-
-LeadForge AI takes a different approach.
-
-It creates a **real operating system for AI-assisted growth teams** where AI helps with execution, but humans stay in control of decisions.
-
----
-
-# ✅ Core Workflow
-
-```text
-Lead → Research → Website Audit → Outreach Draft → Approval → Client Ops → Outcome Learning
-```
-
-This makes growth operations traceable, reviewable, and scalable.
-
----
-
-# 🧩 Product Modules
-
-## 📋 Pipeline Command Center
-
-Track leads across stages with filters, movement, health view, and operational visibility.
-
-## 🔍 Research Agent
-
-Generate company insights, ICP match signals, pain points, and buying context.
-
-## 🌐 Website Audit Engine
-
-Analyze websites for conversion friction, clarity gaps, trust issues, messaging problems, and growth opportunities.
-
-## ✉️ Outreach Generator
-
-Create personalized:
-
-* cold emails
-* LinkedIn messages
-* follow-ups
-* CTA angles
-* offer positioning
-
-## 🛡 Approval Queue
-
-Every outbound action can be reviewed before execution.
-
-## 📈 Growth Mode
-
-Generate a founder-grade 90-day growth strategy from one prompt.
-
-## 🕵️ Competitor Spy
-
-Break down competitor funnels, offers, hooks, CTAs, and positioning strategy.
-
-## 🧪 Roast Lab
-
-Shareable website teardown + landing page rewrite system.
-
-## 📊 Outcome Learning
-
-Track sent, replied, booked, won, and lost signals to improve future workflows.
-
----
-
-# 🏗 Technical Architecture
+## 🏗 Modular Architecture
+LeadForge AI is architected as a modular monorepo, enforcing strict boundaries between the open-source core and proprietary SaaS capabilities.
 
 ```mermaid
 graph TD
-    User((Operator)) --> UI[Next.js 16 App Router]
-    UI --> Actions[Server Actions / API Layer]
-    Actions --> Agents[AI Agent Workflows]
-    Actions --> DB[(PostgreSQL + Prisma)]
-    Agents --> Research[Research Engine]
-    Agents --> Audit[Website Audit]
-    Agents --> Drafts[Outreach Generator]
-    Agents --> Ops[Client Ops Prep]
-    Agents --> Evals[Quality Gates]
-    Agents --> Approvals[Human Review Queue]
-    Approvals --> User
+    UI[apps/dashboard] --> Auth[Auth.js / RBAC]
+    UI --> Billing[packages/billing]
+    UI --> Agents[packages/agents]
+    
+    Agents --> LLM[OpenAI / Anthropic]
+    Agents --> Registry[Prompt Registry]
+    
+    Registry --> Public[Open Source Defaults]
+    Registry --> Private[Premium Private API]
+    
+    Agents --> Integrations[packages/integrations]
+    
+    Integrations --> Gmail[Gmail API]
+    Integrations --> LinkedIn[LinkedIn API]
+    Integrations --> Enrichment[Waterfall Enrichment]
+    
+    Enrichment --> Apollo[Apollo]
+    Enrichment --> Clearbit[Clearbit]
+    Enrichment --> AI[OpenAI Fallback]
 ```
 
----
+## 🤖 Autonomous Workflow
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant A as Agent Engine
+    participant I as Integrations
+    participant B as Billing Gate
+    
+    U->>A: Trigger Lead Research
+    A->>I: Fetch Firmographics
+    I-->>A: Merged Data
+    A->>A: Generate Outreach Strategy
+    A->>B: Check Entitlement (Pro?)
+    B-->>A: Entitled / Gated
+    A->>U: Request Human Approval
+    U->>A: Approve Draft
+    A->>I: Send (Gmail/LinkedIn/SMS)
+```
 
-# ⚙ Tech Stack
+- **`apps/dashboard`**: A high-fidelity Next.js application with cinematic UI gating and real-time revenue intelligence.
+- **`packages/agents`**: The orchestration layer for autonomous workflows (Research, Audit, Outreach).
+- **`packages/integrations`**: Robust adapters for Gmail, LinkedIn, Twilio, and a waterfall enrichment engine (Clearbit, Apollo, etc.).
+- **`packages/billing`**: Hardened commercial layer with Stripe integration and Pro-tier entitlement management.
 
-| Layer      | Technology              |
-| ---------- | ----------------------- |
-| Frontend   | Next.js 16 + React 19   |
-| Language   | TypeScript              |
-| Database   | PostgreSQL              |
-| ORM        | Prisma 7                |
-| Validation | Zod                     |
-| Styling    | Tailwind CSS 4          |
-| Security   | Gitleaks + CodeQL       |
-| Deploy     | Vercel                  |
-| AI Layer   | Structured AI Workflows |
+## ✨ Key Features
+- **Autonomous Research**: AI agents that perform deep-dive firmographic and technographic analysis on every lead.
+- **Multi-Channel Command Center**: Unified sequencing across Email, LinkedIn, and SMS with human-in-the-loop approval gates.
+- **Cinematic Gating**: A "Smarter" UI that distinguishes between free core features and premium Pro/Agency capabilities.
+- **Enterprise-Grade Security**: Automated secret scanning (Gitleaks), RBAC foundations, and a zero-trust approach to generated artifacts.
 
----
+## 🚀 Getting Started
 
-# 🚀 Quick Start
+### 1. Prerequisites
+- **Node.js** (v18+)
+- **Postgres** (Local or Managed)
+- **OpenAI API Key**
 
-## 1. Clone Repository
-
+### 2. Installation
 ```bash
+# Clone the repository
 git clone https://github.com/karandangi123/leadforge-ai.git
 cd leadforge-ai
-```
 
-## 2. Install Dependencies
-
-```bash
+# Install dependencies
 npm install
-```
 
-## 3. Setup Environment
-
-```bash
+# Set up environment
 cp .env.example .env
+# Fill in your OPENAI_API_KEY and DATABASE_URL
 ```
 
-Add:
-
-```env
-DATABASE_URL=
-OPENAI_API_KEY=
-```
-
----
-
-## 4. Initialize Database
-
+### 3. Database Initialization
 ```bash
-npm run db:generate
-npm run db:migrate
+npx prisma migrate dev
+npx prisma generate
 ```
 
----
-
-## 5. Start Development Server
-
+### 4. Launch
 ```bash
 npm run dev
 ```
 
----
+## 🔐 Open-Core & Commercial Boundaries
+LeadForge AI follows a strategic **Open-Core** model. The core orchestration, adapters, and UI are open-source. Proprietary SaaS logic (Premium Prompts, Advanced Deliverability, and Commercial Billing) is isolated via environmental gates:
 
-# 📁 Project Structure
+- **Core Mode**: Enabled by default for community users.
+- **Pro Mode**: Enabled via `LEADFORGE_PRO_MODE=true`, unlocking high-performance logic and encrypted prompt registries.
 
-```text
-src/
-├── app/            # routes + UI
-├── components/     # reusable components
-├── actions/        # server actions
-├── agents/         # AI workflows
-├── lib/            # utilities
-├── prompts/        # prompt systems
-├── styles/         # UI styling
-
-prisma/             # schema + migrations
-docs/               # architecture docs
-.github/            # CI/CD + workflows
-```
+## 🤝 Contributing
+We welcome contributions that improve the core engine while respecting the platform's security boundaries. Please review our [CONTRIBUTING.md](./CONTRIBUTING.md) and [SECURITY.md](./SECURITY.md) before submitting a PR.
 
 ---
 
-# 🛡 Security Principles
+## 🗺 Pro Feature Roadmap
+We are rapidly scaling the platform's capabilities. Below is our current roadmap for Pro and Agency tiers:
 
-* No plaintext secrets committed
-* `.env` excluded from Git
-* Gitleaks scanning enabled
-* CodeQL analysis ready
-* Human approvals before side effects
-* Structured outputs + validation
-* Safe fallback mode when AI keys missing
+| Phase | Feature | Tier | Status |
+| :--- | :--- | :--- | :--- |
+| **Q2** | **Multi-Channel Sequence Engine** | Pro | ✅ Alpha |
+| **Q2** | **Native Deliverability Warmup** | Pro | 🛠 Development |
+| **Q3** | **White-Label Client Reporting** | Agency | 📅 Planned |
+| **Q3** | **Two-Way CRM Sync (HubSpot/SFDC)** | Pro | 📅 Planned |
+| **Q4** | **Custom Agentic Skill Builder** | Agency | 📅 Planned |
 
----
-
-# 📌 Roadmap
-
-## v0.1 Current
-
-* Lead pipeline
-* Research workflows
-* Website audits
-* Outreach drafts
-* Approval queue
-* Prisma-backed data model
-
-## v0.2 Next
-
-* Gmail draft creation
-* CRM sync
-* Airtable payloads
-* Follow-up reminders
-* Multi-user workspace
-
-## v0.3 Future
-
-* Agent analytics
-* Eval dashboards
-* Learning loops
-* Team collaboration
-* Advanced automation controls
-
----
-
-# 🤝 Contributing
-
-We welcome builders, developers, designers, and operators.
-
-## Good First Contributions
-
-* Improve audit scoring logic
-* Add eval tests
-* Improve mobile UX
-* Add integrations
-* Improve docs and screenshots
-* Accessibility upgrades
-* Performance optimization
-
-## Contribution Flow
-
-```text
-Fork → Branch → Build → Test → PR
-```
-
----
-
-# ⭐ Why Star This Repo?
-
-If you care about:
-
-* AI agents
-* SaaS systems
-* Growth automation
-* Next.js architecture
-* Human-in-the-loop AI
-* Real startup products
-
-Give it a ⭐ and follow the journey.
-
----
-
-# 👨‍💻 Author
-
-**Karan Dangi**
-Applied AI Engineer • Builder • Growth Systems
-🎓 MANIT / NIT Bhopal
-
-<p align="left">
-  <a href="https://github.com/karandangi123"><img src="https://img.shields.io/badge/GitHub-karandangi123-111827?style=flat-square&logo=github&logoColor=white" alt="GitHub" /></a>
-  <a href="https://www.linkedin.com/in/karan-dangi-4a672925b"><img src="https://img.shields.io/badge/LinkedIn-Karan_Dangi-0A66C2?style=flat-square&logo=linkedin&logoColor=white" alt="LinkedIn" /></a>
-  <a href="https://leadforge-ai-weld.vercel.app"><img src="https://img.shields.io/badge/Live-LeadForge_AI-176b5d?style=flat-square" alt="LeadForge AI Live" /></a>
-</p>
-
-
----
-
-# 📄 License
-
-MIT License
+*Built for the next generation of RevOps consultancies and scaling SaaS teams.*

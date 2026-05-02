@@ -1,37 +1,30 @@
 {
-  "name": "leadforge-ai",
-  "version": "0.1.0",
+  "name": "leadforge-monorepo",
   "private": true,
+  "packageManager": "npm@11.11.0",
+  "workspaces": [
+
+    "apps/*",
+    "packages/*"
+  ],
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "eslint",
-    "db:generate": "prisma generate",
-    "db:migrate": "prisma migrate dev",
-    "db:studio": "prisma studio",
-    "postinstall": "prisma generate"
-  },
-  "dependencies": {
-    "@prisma/adapter-pg": "^7.8.0",
-    "@prisma/client": "^7.8.0",
-    "lucide-react": "^1.14.0",
-    "next": "16.2.4",
-    "pg": "^8.20.0",
-    "react": "19.2.4",
-    "react-dom": "19.2.4",
-    "zod": "^4.3.6"
+    "dev:all": "turbo run dev",
+    "dev:worker": "npm run dev --workspace apps/worker",
+    "worker": "npm run worker --workspace apps/worker",
+    "vercel-build": "npm run db:generate --workspace @leadforge/db && npm run build --workspace apps/dashboard && rm -rf .next && cp -R apps/dashboard/.next .next",
+    "build:all": "npm run build --workspaces --if-present",
+    "lint:all": "npm run lint --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test:e2e": "npm run test:e2e --workspace apps/dashboard",
+    "test:jobs": "npm run test:jobs --workspace apps/dashboard",
+    "db:generate": "npm run db:generate --workspace @leadforge/db",
+    "db:push": "npm run db:push --workspace @leadforge/db",
+    "format": "prettier --write \"**/*.{ts,tsx,md}\""
   },
   "devDependencies": {
-    "@tailwindcss/postcss": "^4",
-    "@types/node": "^20",
-    "@types/pg": "^8.20.0",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
-    "eslint": "^9",
-    "eslint-config-next": "16.2.4",
-    "prisma": "^7.8.0",
-    "tailwindcss": "^4",
-    "typescript": "^5"
-  }
+    "prettier": "^3.0.0",
+    "tsx": "^4.20.6",
+    "turbo": "^2.0.0"
+  },
+  "dependencies": {}
 }

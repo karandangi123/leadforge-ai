@@ -9,7 +9,7 @@ const STEPS = [
   {
     id: "icp",
     title: "Define Your ICP",
-    description: "Tell LeadForge AI who you want to reach — industry, role, location, company size, and growth signals.",
+    description: "Tell the Intelligence Engine who you want to reach — industry, role, location, company size, and growth signals.",
     icon: Target,
     accent: "#22D3EE",
     tag: "Targeting"
@@ -17,7 +17,7 @@ const STEPS = [
   {
     id: "discovery",
     title: "Discover Prospects",
-    description: "LeadForge AI scans your target market and builds a clean prospect list with relevant decision makers.",
+    description: "The system scans your target market and builds a clean prospect list with relevant decision makers.",
     icon: Search,
     accent: "#3B82F6",
     tag: "Intelligence"
@@ -33,7 +33,7 @@ const STEPS = [
   {
     id: "score",
     title: "Score Buying Intent",
-    description: "AI prioritizes leads based on fit, signal strength, timing, and conversion probability.",
+    description: "Intelligence prioritizes leads based on fit, signal strength, timing, and conversion probability.",
     icon: Sparkles,
     accent: "#F59E0B",
     tag: "Predictive"
@@ -41,7 +41,7 @@ const STEPS = [
   {
     id: "outreach",
     title: "Generate Outreach",
-    description: "LeadForge AI writes contextual email and LinkedIn openers based on each prospect's unique company signals.",
+    description: "The platform prepares contextual email and LinkedIn openers based on each prospect's unique company signals.",
     icon: Mail,
     accent: "#10B981",
     tag: "Personalization"
@@ -112,7 +112,7 @@ export function ScrollProductStory() {
              <div className="mb-24">
                 <div className="flex flex-wrap items-center gap-4 mb-8">
                    <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/5 border border-white/10 text-[10px] font-black uppercase tracking-[0.4em] text-[#22D3EE] shadow-2xl">
-                      <Activity size={14} className="animate-pulse" /> Autonomous Engine
+                      <Activity size={14} className="animate-pulse" /> Revenue Architecture
                    </div>
                    
                    {manualMode && (
@@ -275,7 +275,7 @@ export function ScrollProductStory() {
                               <div className="flex items-center justify-between">
                                  <div className="space-y-3">
                                     <h4 className="text-5xl font-black text-white tracking-tight">ICP Builder</h4>
-                                    <p className="text-[14px] text-[#22D3EE] font-black uppercase tracking-[0.4em]">Autonomous Setup v1.0</p>
+                                    <p className="text-[14px] text-[#22D3EE] font-black uppercase tracking-[0.4em]">Intelligence Setup v1.0</p>
                                  </div>
                                  <motion.div 
                                     animate={{ rotate: 360 }}
@@ -411,7 +411,7 @@ export function ScrollProductStory() {
 
                          {activeStep === 4 && (
                            <div className="space-y-12">
-                              <h4 className="text-5xl font-black text-white tracking-tight">AI Outreach</h4>
+                              <h4 className="text-5xl font-black text-white tracking-tight">Prepared Outreach</h4>
                               <div className="rounded-[4.5rem] bg-[#05070D] border border-white/10 p-16 space-y-16 shadow-2xl relative">
                                  <div className="absolute top-0 right-0 p-16 opacity-[0.06]">
                                     <Mail size={200} className="text-[#10B981]" />
@@ -424,9 +424,9 @@ export function ScrollProductStory() {
                                       </div>
                                     </div>
                                     <div>
-                                       <p className="text-[13px] font-black uppercase tracking-[0.6em] text-[#10B981] mb-8">AI Blueprint Preview</p>
+                                       <p className="text-[13px] font-black uppercase tracking-[0.6em] text-[#10B981] mb-8">Intelligence Blueprint Preview</p>
                                        <div className="p-14 rounded-3xl bg-white/5 border border-white/10 text-[20px] leading-relaxed text-[#F8FAFC] font-bold shadow-inner">
-                                         Hi Alex, noticed NovaStack is hiring SDRs. <span className="text-[#10B981] font-black underline decoration-[5px] underline-offset-[10px]">LeadForge AI</span> could help your team automate...
+                                         Hi Alex, noticed NovaStack is hiring SDRs. <span className="text-[#10B981] font-black underline decoration-[5px] underline-offset-[10px]">Intelligence Engine</span> could help your team automate...
                                       </div>
                                     </div>
                                  </div>

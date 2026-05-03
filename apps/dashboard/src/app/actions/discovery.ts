@@ -125,7 +125,7 @@ export async function saveCandidateLead(formData: FormData) {
         segment: candidate.segment,
         status: LeadStatus.RESEARCH,
         source: `discovery:${candidate.sourceType}`,
-        nextAction: "Run AI research",
+        nextAction: "Run intelligence research",
       },
     });
 

@@ -94,7 +94,7 @@ export async function addLead(formData: FormData) {
       tags: parseTagInput(parsed.data.tags),
       status: LeadStatus.RESEARCH,
       source: "manual",
-      nextAction: "Run AI research",
+      nextAction: "Run intelligence research",
     },
   });
 
@@ -117,7 +117,7 @@ export async function addLead(formData: FormData) {
             tags: parseTagInput(parsed.data.tags),
           },
           output: {
-            nextAction: "Run AI research",
+            nextAction: "Run intelligence research",
           },
         },
       });
@@ -160,13 +160,13 @@ export async function createLeadFromInsight(formData: FormData) {
         tags: parseTagInput(parsed.data.tags),
         status: LeadStatus.RESEARCH,
         source: source,
-        nextAction: "Run AI research",
+        nextAction: "Run intelligence research",
         agentTraces: {
           create: {
             agentName: "Insight Converter",
             status: "SUCCEEDED",
             input: { source, company: parsed.data.company },
-            output: { nextAction: "Run AI research" },
+            output: { nextAction: "Run intelligence research" },
           },
         },
       },
@@ -664,7 +664,7 @@ export async function importLeadsCsv(_prevState: CsvImportState, formData: FormD
           tags: parseTagInput(parsedRow.data.tags),
           status: LeadStatus.RESEARCH,
           source: "csv_import",
-          nextAction: "Run AI research",
+          nextAction: "Run intelligence research",
           agentTraces: {
             create: {
               agentName: "Lead Intake",
@@ -675,7 +675,7 @@ export async function importLeadsCsv(_prevState: CsvImportState, formData: FormD
                 tags: parseTagInput(parsedRow.data.tags),
               },
               output: {
-                nextAction: "Run AI research",
+                nextAction: "Run intelligence research",
               },
             },
           },

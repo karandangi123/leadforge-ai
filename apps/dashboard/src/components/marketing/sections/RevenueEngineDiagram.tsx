@@ -36,6 +36,13 @@ const PILLARS = [
 ];
 
 export function RevenueEngineDiagram() {
+  const particles = React.useMemo(() => 
+    [...Array(6)].map((_, i) => ({
+      x: Math.random() * 100 + "%",
+      duration: Math.random() * 10 + 10,
+      delay: i * 2
+    })), []);
+
   return (
     <section className="py-32 bg-[#02040a] relative overflow-hidden">
       {/* Background Atmosphere */}
@@ -44,12 +51,12 @@ export function RevenueEngineDiagram() {
       
       {/* Subtle Data Particles (Pure CSS for performance) */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none opacity-20">
-         {[...Array(6)].map((_, i) => (
+         {particles.map((p, i) => (
            <motion.div
              key={i}
-             initial={{ x: Math.random() * 100 + "%", y: "100%" }}
+             initial={{ x: p.x, y: "100%" }}
              animate={{ y: "-10%" }}
-             transition={{ duration: Math.random() * 10 + 10, repeat: Infinity, ease: "linear", delay: i * 2 }}
+             transition={{ duration: p.duration, repeat: Infinity, ease: "linear", delay: p.delay }}
              className="absolute w-[1px] h-20 bg-gradient-to-t from-transparent via-[#22D3EE] to-transparent"
            />
          ))}

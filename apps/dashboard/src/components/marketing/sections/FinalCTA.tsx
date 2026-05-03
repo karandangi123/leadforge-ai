@@ -4,6 +4,8 @@ import React from "react";
 import { motion, useMotionValue, useSpring } from "framer-motion";
 import { ArrowRight, Sparkles, Zap, ChevronRight, Activity, Command } from "lucide-react";
 import Link from "next/link";
+import { useSession } from "next-auth/react";
+import { GoogleIcon } from "@/components/icons";
 
 function MagneticButton({ children, className, href }: { children: React.ReactNode; className: string; href: string }) {
   const x = useMotionValue(0);
@@ -39,6 +41,7 @@ function MagneticButton({ children, className, href }: { children: React.ReactNo
 }
 
 export function FinalCTA() {
+  const { data: session, status } = useSession();
   return (
     <section className="py-56 relative overflow-hidden bg-[#02040a]">
       {/* Cinematic Background Infrastructure */}
@@ -74,21 +77,33 @@ export function FinalCTA() {
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-10">
-            <MagneticButton 
-              href="/dashboard?view=intelligence"
-              className="group relative flex items-center justify-center gap-4 bg-[#22D3EE] text-[#05070D] px-16 py-8 rounded-[2.5rem] text-xl font-black transition-all shadow-[0_40px_80px_-20px_rgba(34,211,238,0.5)] overflow-hidden"
-            >
-              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000" />
-              Initialize Global Sequence
-              <ArrowRight size={24} className="group-hover:translate-x-2 transition-transform" />
-            </MagneticButton>
-            
-            <MagneticButton 
-              href="/dashboard?view=dashboard"
-              className="group flex items-center justify-center gap-4 bg-white/5 text-white px-16 py-8 rounded-[2.5rem] text-xl font-black transition-all hover:bg-white/10 border border-white/10 backdrop-blur-3xl"
-            >
-              <Command size={22} className="opacity-40" /> Command Center
-            </MagneticButton>
+            {status === "authenticated" && session?.user?.id !== "demo-user" ? (
+              <MagneticButton 
+                href="/dashboard?view=dashboard"
+                className="group relative flex items-center justify-center gap-4 bg-[#22D3EE] text-[#05070D] px-16 py-8 rounded-[2.5rem] text-xl font-black transition-all shadow-[0_40px_80px_-20px_rgba(34,211,238,0.5)] overflow-hidden"
+              >
+                Return to Command Center
+                <ArrowRight size={24} className="group-hover:translate-x-2 transition-transform" />
+              </MagneticButton>
+            ) : (
+              <>
+                <MagneticButton 
+                  href="/login"
+                  className="group relative flex items-center justify-center gap-4 bg-[#22D3EE] text-[#05070D] px-16 py-8 rounded-[2.5rem] text-xl font-black transition-all shadow-[0_40px_80px_-20px_rgba(34,211,238,0.5)] overflow-hidden"
+                >
+                  <GoogleIcon className="w-6 h-6" />
+                  Initialize Global Sequence
+                  <ArrowRight size={24} className="group-hover:translate-x-2 transition-transform" />
+                </MagneticButton>
+                
+                <MagneticButton 
+                  href="/dashboard?view=dashboard"
+                  className="group flex items-center justify-center gap-4 bg-white/5 text-white px-16 py-8 rounded-[2.5rem] text-xl font-black transition-all hover:bg-white/10 border border-white/10 backdrop-blur-3xl"
+                >
+                  <Command size={22} className="opacity-40" /> Trial Center
+                </MagneticButton>
+              </>
+            )}
           </div>
           
           <div className="mt-32 grid grid-cols-2 md:grid-cols-4 gap-10 max-w-5xl mx-auto">

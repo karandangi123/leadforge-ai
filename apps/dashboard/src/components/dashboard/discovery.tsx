@@ -11,7 +11,7 @@ export function LeadDiscoveryPanel({ discovery, databaseStatus }: { discovery: D
   return (
     <section className="rounded-2xl border border-[#d2cab7] bg-[#fffdf8] p-6">
       <p className="text-xs font-black uppercase text-[#176b5d]">Discovery</p>
-      <h2 className="mt-1 text-2xl font-black">Autonomous lead discovery</h2>
+      <h2 className="mt-1 text-2xl font-black">Intelligence lead discovery</h2>
       <p className="mt-2 text-sm text-[#687169]">Generate a compliant query plan, inspect candidate evidence, then save only the leads worth moving into the pipeline.</p>
 
       <form action={runLeadDiscovery} className="mt-6 space-y-4">

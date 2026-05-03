@@ -577,7 +577,7 @@ export async function createOutreachSequence(formData: FormData) {
       include: { steps: { orderBy: { stepNumber: "asc" } } },
     });
 
-    // Dynamically enroll eligible leads from the AI research dossier phase
+    // Dynamically enroll eligible leads from the intelligence research dossier phase
     const eligibleLeads = await prisma.lead.findMany({
       where: {
         workspaceId: workspace.id,

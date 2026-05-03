@@ -4,6 +4,8 @@ import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence, useMotionValue, useSpring, useTransform } from "framer-motion";
 import { Sparkles, ArrowRight, Search, Zap, Target, Mail, BarChart3, CheckCircle2, Database, Globe, MousePointer2, Activity, Terminal as TerminalIcon, Cpu, ShieldCheck } from "lucide-react";
 import Link from "next/link";
+import { useSession } from "next-auth/react";
+import { GoogleIcon } from "@/components/icons";
 
 const STAGES = [
   { id: "icp", label: "Input ICP", icon: Target, color: "#22D3EE", text: "Find SaaS founders in India hiring sales teams", metric: "428k Targets" },
@@ -48,6 +50,7 @@ function MagneticButton({ children, className, href }: { children: React.ReactNo
 }
 
 export function HeroRevenueFlow() {
+  const { data: session, status } = useSession();
   const [currentStage, setCurrentStage] = useState(0);
   const [manualMode, setManualMode] = useState(false);
   const [logs, setLogs] = useState<string[]>(["Revenue System Online", "Awaiting Protocol..."]);
@@ -147,20 +150,45 @@ export function HeroRevenueFlow() {
               transition={{ delay: 0.3 }}
               className="flex flex-wrap gap-6"
             >
-              <MagneticButton 
-                href="/dashboard?view=intelligence"
-                className="group relative flex items-center gap-4 bg-[#22D3EE] text-[#05070D] px-12 py-6 rounded-2xl text-base font-black transition-all shadow-[0_30px_60px_-15px_rgba(34,211,238,0.4)]"
-              >
-                Initialize Engine
-                <ArrowRight size={20} className="group-hover:translate-x-1.5 transition-transform" />
-              </MagneticButton>
-              
-              <MagneticButton 
-                href="/dashboard?view=dashboard"
-                className="group flex items-center gap-4 bg-white/5 text-white px-12 py-6 rounded-2xl text-base font-black transition-all hover:bg-white/10 border border-white/10 backdrop-blur-xl"
-              >
-                Command Center
-              </MagneticButton>
+              {status === "authenticated" && session?.user?.id !== "demo-user" ? (
+                <div className="flex items-center gap-6">
+                  <MagneticButton 
+                    href="/dashboard?view=dashboard"
+                    className="group relative flex items-center gap-4 bg-[#22D3EE] text-[#05070D] px-12 py-6 rounded-2xl text-base font-black transition-all shadow-[0_30px_60px_-15px_rgba(34,211,238,0.4)]"
+                  >
+                    Go to Dashboard
+                    <ArrowRight size={20} className="group-hover:translate-x-1.5 transition-transform" />
+                  </MagneticButton>
+                  <div className="flex items-center gap-3 px-6 py-4 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-xl">
+                    {session?.user?.image ? (
+                      <img src={session.user.image} alt={session.user.name || "User"} className="w-8 h-8 rounded-full border border-[#22D3EE]/20" />
+                    ) : (
+                      <div className="w-8 h-8 rounded-full bg-[#22D3EE]/20 flex items-center justify-center text-[#22D3EE] text-xs font-black">
+                        {(session?.user?.name || "U").charAt(0)}
+                      </div>
+                    )}
+                    <p className="text-xs font-black text-white/60">Logged in as <span className="text-white">{session?.user?.name}</span></p>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <MagneticButton 
+                    href="/login"
+                    className="group relative flex items-center gap-4 bg-[#22D3EE] text-[#05070D] px-12 py-6 rounded-2xl text-base font-black transition-all shadow-[0_30px_60px_-15px_rgba(34,211,238,0.4)]"
+                  >
+                    <GoogleIcon className="w-5 h-5" />
+                    Initialize Engine
+                    <ArrowRight size={20} className="group-hover:translate-x-1.5 transition-transform" />
+                  </MagneticButton>
+                  
+                  <MagneticButton 
+                    href="/dashboard?view=dashboard"
+                    className="group flex items-center gap-4 bg-white/5 text-white px-12 py-6 rounded-2xl text-base font-black transition-all hover:bg-white/10 border border-white/10 backdrop-blur-xl"
+                  >
+                    Command Center (Demo)
+                  </MagneticButton>
+                </>
+              )}
             </motion.div>
             
             <div className="mt-24 pt-12 border-t border-white/5 grid grid-cols-3 gap-16">

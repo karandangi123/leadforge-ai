@@ -173,7 +173,7 @@ const glossary = [
   },
   {
     term: "Trace",
-    meaning: "A log of what an AI or operator step did, including output, model, cost, and timing.",
+    meaning: "A log of what an intelligence or operator step did, including output, model, cost, and timing.",
   },
 ];
 
@@ -436,7 +436,7 @@ export default async function Home({
                   <FeatureGate feature="Proposal Packaging" isEntitled={isEntitledPro}>
                     <QuickActionCard href="/dashboard?view=proposal" title="Proposal Engine" detail="Create a client-facing proposal package with scope and pricing." isPro={isEntitledPro} />
                   </FeatureGate>
-                  <QuickActionCard href="/dashboard?view=targeting" title="Playbook Center" detail="Save product, ICP, and tone before running AI sequences." />
+                  <QuickActionCard href="/dashboard?view=targeting" title="Playbook Center" detail="Save product, ICP, and tone before running intelligence sequences." />
                   <QuickActionCard href="#add-lead" title="Lead Discovery" detail="Import leads manually or by CSV and route them into the board." />
                   <QuickActionCard href="/dashboard?view=intelligence" title="Market Intel" detail="Create a compliant query plan and score candidate leads." />
                 </div>
@@ -1212,7 +1212,7 @@ export default async function Home({
               { icon: LayoutDashboard, label: "Pipeline", detail: "Real-time visibility into your lead stages and conversion health.", href: "/dashboard?view=dashboard" },
               { icon: Zap, label: "Sequences", detail: "Multi-channel automated outreach flows across Email and SMS.", href: "/dashboard?view=sequences" },
               { icon: Building2, label: "CRM Hub", detail: "Centralized deal management and contact history tracking.", href: "/dashboard?view=crm" },
-              { icon: ClipboardCheck, label: "Approvals", detail: "Human-in-the-loop review queue for AI-generated outreach.", href: "/dashboard?view=outreach" },
+              { icon: ClipboardCheck, label: "Approvals", detail: "Human-in-the-loop review queue for prepared outreach.", href: "/dashboard?view=outreach" },
             ]}
           />
         ) : null}
@@ -1221,7 +1221,7 @@ export default async function Home({
           <CategoryView 
             title="Growth Lab"
             subtitle="Intelligence & Audit"
-            description="Leverage advanced AI audits and competitive research to build high-converting outbound playbooks."
+            description="Leverage advanced intelligence audits and competitive research to build high-converting outbound playbooks."
             items={[
               { icon: Flame, label: "Roast Lab", detail: "Deep website teardowns and cognitive load audits for viral growth.", href: "/dashboard?view=roast" },
               { icon: Radar, label: "Competitor Spy", detail: "Real-time positioning voids and messaging differentiation matrices.", href: "/dashboard?view=competitor" },

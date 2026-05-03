@@ -7,6 +7,7 @@ import { getActiveWorkspace } from "./workspace";
 
 export type DashboardLead = {
   id: string;
+  workspaceId: string;
   company: string;
   segment: string;
   fit: number | null;
@@ -368,14 +369,14 @@ export async function createSampleLeadRecord(source: string) {
       tags: ["sample", "healthcare", "demo"],
       status: LeadStatus.RESEARCH,
       source: "sample",
-      nextAction: "Run AI research",
+      nextAction: "Run intelligence research",
       agentTraces: {
         create: {
           agentName: "Sample Lead Generator",
           status: "SUCCEEDED",
           input: { source },
           output: {
-            nextAction: "Run AI research",
+            nextAction: "Run intelligence research",
             note: "Sample lead created for first-run onboarding.",
           },
         },
@@ -387,6 +388,7 @@ export async function createSampleLeadRecord(source: string) {
 const seededLeads: DashboardLead[] = [
   {
     id: "seed-northstar",
+    workspaceId: "demo",
     company: "Northstar Clinics",
     segment: "Healthcare ops",
     fit: 92,
@@ -411,6 +413,7 @@ const seededLeads: DashboardLead[] = [
   },
   {
     id: "seed-civicgrid",
+    workspaceId: "demo",
     company: "CivicGrid",
     segment: "GovTech SaaS",
     fit: 88,
@@ -435,6 +438,7 @@ const seededLeads: DashboardLead[] = [
   },
   {
     id: "seed-luma",
+    workspaceId: "demo",
     company: "Luma Freight",
     segment: "Logistics",
     fit: 79,
@@ -459,6 +463,7 @@ const seededLeads: DashboardLead[] = [
   },
   {
     id: "seed-operand",
+    workspaceId: "demo",
     company: "Operand AI",
     segment: "B2B AI tooling",
     fit: 96,
@@ -483,6 +488,7 @@ const seededLeads: DashboardLead[] = [
   },
   {
     id: "seed-seabrook",
+    workspaceId: "demo",
     company: "Seabrook Dental Group",
     segment: "Multi-location clinics",
     fit: 84,
@@ -491,8 +497,8 @@ const seededLeads: DashboardLead[] = [
     stage: "New",
     owner: "Intake Desk",
     ownerName: "Intake Desk",
-    next: "Run AI research",
-    aiNextAction: "Run AI research",
+    next: "Run intelligence research",
+    aiNextAction: "Run intelligence research",
     humanNextAction: null,
     website: "https://seabrook.example",
     contact: "Nina Brooks",
@@ -507,6 +513,7 @@ const seededLeads: DashboardLead[] = [
   },
   {
     id: "seed-arcus",
+    workspaceId: "demo",
     company: "Arcus Labs",
     segment: "Developer tooling",
     fit: 91,
@@ -531,6 +538,7 @@ const seededLeads: DashboardLead[] = [
   },
   {
     id: "seed-lighthouse",
+    workspaceId: "demo",
     company: "Lighthouse Commerce",
     segment: "Ecommerce enablement",
     fit: 58,
@@ -637,6 +645,7 @@ export async function getDashboardLeads(): Promise<LeadDataState> {
         ? (leads as any[]).map((lead) =>
             mapDashboardLead({
               id: lead.id,
+              workspaceId: lead.workspaceId,
               company: lead.company,
               segment: lead.segment,
               fitScore: lead.fitScore,
@@ -741,6 +750,7 @@ export async function getLeadDetail(leadId: string): Promise<LeadDetailState | n
 
     const detailLead = mapDashboardLead({
       id: lead.id,
+      workspaceId: lead.workspaceId,
       company: lead.company,
       segment: lead.segment,
       fitScore: lead.fitScore,
@@ -1164,6 +1174,7 @@ function calculateSLAHealth(status: LeadStatus, lastChanged: Date): { status: "h
 
 function mapDashboardLead(input: {
   id: string;
+  workspaceId: string;
   company: string;
   segment: string | null;
   fitScore: number | null;
@@ -1187,6 +1198,7 @@ function mapDashboardLead(input: {
   
   return {
     id: input.id,
+    workspaceId: input.workspaceId,
     company: input.company,
     segment: input.segment ?? "Unsegmented",
     fit: input.fitScore,
@@ -1630,7 +1642,7 @@ function getSeedLeadDetail(leadId: string): LeadDetailState | null {
         id: `${lead.id}-trace-1`,
         agentName: "Research Agent",
         status: "SUCCEEDED",
-        model: "gpt-5.4",
+        model: "gpt-4o",
         latencyMs: 1840,
         tokenCount: 3120,
         costCents: 24,
@@ -1645,7 +1657,7 @@ function getSeedLeadDetail(leadId: string): LeadDetailState | null {
         id: `${lead.id}-trace-2`,
         agentName: "Website Audit Agent",
         status: "SUCCEEDED",
-        model: "gpt-5.4-mini",
+        model: "gpt-4o-mini",
         latencyMs: 970,
         tokenCount: 1418,
         costCents: 9,
@@ -2083,7 +2095,7 @@ const seededTraceViewer: TraceViewerEntry[] = [
     leadName: "Northstar Clinics",
     agentName: "Research Agent",
     status: "SUCCEEDED",
-    model: "gpt-5.4",
+    model: "gpt-4o",
     latencyMs: 1840,
     tokenCount: 3120,
         costCents: 24,
@@ -2098,7 +2110,7 @@ const seededTraceViewer: TraceViewerEntry[] = [
     leadName: "Northstar Clinics",
     agentName: "Website Audit Agent",
     status: "SUCCEEDED",
-    model: "gpt-5.4-mini",
+    model: "gpt-4o-mini",
     latencyMs: 970,
     tokenCount: 1418,
     costCents: 9,

@@ -29,7 +29,7 @@ export class PromptRegistry {
           headers: { "Authorization": `Bearer ${process.env.LEADFORGE_INTERNAL_KEY}` }
         });
         if (response.ok) {
-          const data = await response.json();
+          const data = await response.json() as { content: string };
           return data.content;
         }
       } catch (error) {

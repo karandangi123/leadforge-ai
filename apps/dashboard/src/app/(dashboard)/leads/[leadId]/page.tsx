@@ -1,6 +1,6 @@
 import {
   ArrowLeft,
-  Bot,
+  Cpu,
   CalendarClock,
   CheckCircle2,
   ChevronRight,
@@ -157,11 +157,11 @@ export default async function LeadDetailPage({
           <div className="flex flex-col gap-3 border-b border-[#d7eee6] bg-[#f3faf7] px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h2 className="text-xl font-black">Next action controls</h2>
-              <p className="mt-1 text-sm text-[#3f5d55]">Run agents, override stage intentionally, and keep the AI suggestion separate from the human plan.</p>
+              <p className="mt-1 text-sm text-[#3f5d55]">Run agents, override stage intentionally, and keep the intelligence suggestion separate from the human plan.</p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <span className="inline-flex w-fit items-center gap-2 rounded-md bg-white px-3 py-2 text-xs font-black text-[#176b5d]">
-                <Bot size={14} /> {aiMode}
+                <Cpu size={14} /> {aiMode}
               </span>
               <span className="inline-flex w-fit items-center gap-2 rounded-md border border-[#b9ddcf] bg-white px-3 py-2 text-xs font-black text-[#176b5d]">
                 <DatabaseZap size={14} /> {getRuntimeModeLabel(detail.runtimeMode)}
@@ -178,9 +178,9 @@ export default async function LeadDetailPage({
 
           <div className="grid gap-5 border-t border-[#e3dccd] p-5 lg:grid-cols-[1.1fr_0.9fr]">
             <div className="rounded-xl border border-[#d9d2c1] bg-white p-4">
-              <p className="text-xs font-black uppercase text-[#176b5d]">AI suggested next move</p>
+              <p className="text-xs font-black uppercase text-[#176b5d]">Intelligence suggested next move</p>
               <p className="mt-2 text-sm font-black text-[#1e2521]">{lead.aiNextAction}</p>
-              <p className="mt-3 text-xs text-[#687169]">Human next move stays editable and does not overwrite the AI-generated recommendation.</p>
+              <p className="mt-3 text-xs text-[#687169]">Human next move stays editable and does not overwrite the intelligence recommendation.</p>
               <form action={setLeadHumanNextAction} className="mt-4 space-y-3">
                 <input type="hidden" name="leadId" value={lead.id} />
                 <input
@@ -816,7 +816,7 @@ function getRunNotice(run?: string) {
     outcome: "Outcome logged. The learning loop has a new signal to work with.",
     metadata: "Lead context updated. The workspace will use the latest operator metadata.",
     "stage-moved": "Stage override recorded with an operator trace for auditability.",
-    "next-action": "Human next move saved separately from the AI suggestion.",
+    "next-action": "Human next move saved separately from the intelligence recommendation.",
     "setup-complete": "Setup completed. Your database is linked and a sample lead was created.",
   };
 

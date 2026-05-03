@@ -51,7 +51,7 @@ export function CompetitorSpyForm() {
                 />
                 <input
                   name="notes"
-                  placeholder="e.g. AI Agency, SaaS..."
+                  placeholder="e.g. Agency, SaaS..."
                   className="h-14 px-5 rounded-xl border border-transparent bg-white text-sm font-semibold text-[var(--foreground)] outline-none shadow-sm transition-all min-w-[200px]"
                 />
                 <button

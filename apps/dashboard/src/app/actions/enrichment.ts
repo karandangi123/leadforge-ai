@@ -124,8 +124,21 @@ export async function enrichLead(formData: FormData) {
       redirect(`/leads/${lid}?run=enrich-cached`);
     }
 
-    // Run waterfall
-    const adapters = getEnrichmentAdapters(lead.company, isDemo);
+    const workspaceId = lead.workspaceId;
+
+    // Phase 1: Autonomous Signal Discovery (The "Reasoning" Layer)
+    // We generate a custom research plan based on the lead and the product playbook
+    let plan: any = null;
+    try {
+      const { SignalDiscoveryAgent } = await import("@leadforge/agents");
+      const planResult = await SignalDiscoveryAgent.generatePlan(workspaceId, lid);
+      plan = planResult.data;
+    } catch (e) {
+      console.error("[Enrichment] Signal discovery failed, falling back to standard waterfall", e);
+    }
+
+    // Phase 2: Execution (The "Waterfall" Layer)
+    const adapters = getEnrichmentAdapters(lead.company, isDemo, plan);
     const { merged, fieldConfidence, overallConfidence, providerResults, signals } =
       await runEnrichmentWaterfall(
         {
@@ -217,7 +230,25 @@ export async function enrichLead(formData: FormData) {
       });
     }
 
-    // Log trace
+    // Phase 3: Self-Healing (The "Zero-Bounce" Layer)
+    // If we have no email or low confidence, trigger the Self-Healing agent to find a pivot or fallback
+    if (!merged.contactEmail || overallConfidence < 40) {
+      try {
+        const { SelfHealingAgent } = await import("@leadforge/agents");
+        const repairResult = await SelfHealingAgent.repairLead(lid);
+        
+        if (repairResult.data.status === "PIVOTED") {
+          // If we pivoted to a new company, we need to re-run enrichment for the new data
+          // For now, we log it and redirect to the lead page to show the update
+          revalidatePath(`/leads/${lid}`);
+          redirect(`/leads/${lid}?run=self-healed-pivot`);
+        }
+      } catch (e) {
+        console.error("[Enrichment] Self-healing failed", e);
+      }
+    }
+
+    // Log final trace
     await prisma.agentTrace.create({
       data: {
         leadId: lid,
@@ -228,6 +259,7 @@ export async function enrichLead(formData: FormData) {
           overallConfidence,
           fieldsEnriched: Object.keys(merged).length,
           providers: providerResults.map(r => r.provider),
+          selfHealed: overallConfidence < 40
         },
       },
     });

@@ -65,6 +65,7 @@ const menuItems = [
       { icon: Flame, label: "Roast Lab", detail: "Deep website teardowns and conversion audits.", href: "/dashboard?view=roast" },
       { icon: Radar, label: "Competitor Spy", detail: "Market intelligence and positioning voids.", href: "/dashboard?view=competitor" },
       { icon: Lightbulb, label: "Growth Mode", detail: "AI-driven 90-day execution strategies.", href: "/dashboard?view=growth" },
+      { icon: Layout, label: "War Room", detail: "Elite forensic visual audit command center.", href: "/war-room" },
       { icon: PenSquare, label: "Content Engine", detail: "Founder-grade authority content system.", href: "/dashboard?view=content" },
       { icon: FileText, label: "Proposal Gen", detail: "Close deals with premium proposal packages.", href: "/dashboard?view=proposal" },
     ]
@@ -107,6 +108,15 @@ export function TopNav({ isPro, user }: { isPro?: boolean; user?: any }) {
         >
           <LayoutDashboard size={14} className="opacity-40" />
           Dashboard
+        </Link>
+
+        {/* War Room Direct Access */}
+        <Link 
+          href="/war-room"
+          className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-bold text-amber-500 hover:text-amber-400 transition-all hover:bg-amber-500/10"
+        >
+          <Radar size={14} className="animate-pulse" />
+          War Room
         </Link>
 
         {menuItems.map((menu) => {

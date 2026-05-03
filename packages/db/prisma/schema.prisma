@@ -32,6 +32,8 @@ enum DraftChannel {
   CRM_NOTE
   SMS
   PHONE_CALL
+  AI_VOICE_NOTE
+  AI_VIDEO_CLONE
 }
 
 enum ApprovalStatus {
@@ -48,6 +50,7 @@ enum PromptKind {
   REVIEWER
   FOLLOW_UP
   EVAL
+  SIGNAL_DISCOVERY
 }
 
 enum EvalStatus {
@@ -55,6 +58,7 @@ enum EvalStatus {
   RUNNING
   PASSED
   FAILED
+  CANCELLED
 }
 
 enum JobKind {
@@ -72,6 +76,7 @@ enum JobKind {
   DIALER_CALL
   SEQUENCE_STEP
   LEAD_ENRICHMENT
+  SIGNAL_DISCOVERY
 }
 
 enum EnrichmentSignalKind {
@@ -424,17 +429,44 @@ model WebsiteAudit {
   leadId          String
   lead            Lead           @relation(fields: [leadId], references: [id], onDelete: Cascade)
   status          AgentRunStatus @default(QUEUED)
-  clarityScore    Int?
-  conversionScore Int?
-  trustScore      Int?
-  seoScore        Int?
-  speedScore      Int?
   overallScore    Int?
+  mobileScore     Int?           // New for Phase 8.3
+  desktopScore    Int?           // New for Phase 8.3
+  videoScript     String?        @db.Text
+  videoUrl        String?        // New for Phase 9.2
+  videoStatus     String?        @default("PENDING") // PENDING, GENERATING, COMPLETED, FAILED
   findings        Json           @default("[]")
+  screenshots     WebsiteScreenshot[]
   createdAt       DateTime       @default(now())
   completedAt     DateTime?
 
   @@index([leadId, createdAt])
+}
+
+model WebsiteScreenshot {
+  id              String         @id @default(cuid())
+  auditId         String
+  audit           WebsiteAudit   @relation(fields: [auditId], references: [id], onDelete: Cascade)
+  pageType        String         // home, pricing, about, checkout
+  viewport        String         @default("desktop") // desktop, mobile
+  imageUrl        String         // Hosted CDN URL
+  aiAnalysis      Json?          // Raw model output for this specific page
+  score           Int?           // 0-100 score for this specific page
+  annotations     VisualAnnotation[]
+  createdAt       DateTime       @default(now())
+}
+
+model VisualAnnotation {
+  id              String            @id @default(cuid())
+  screenshotId    String
+  screenshot      WebsiteScreenshot @relation(fields: [screenshotId], references: [id], onDelete: Cascade)
+  x               Float             // Coordinate percentage 0-100
+  y               Float             // Coordinate percentage 0-100
+  label           String            // The finding (e.g. "Broken CTA")
+  issueType       String?           // UX, Speed, Design
+  recommendation  String?           @db.Text
+  severity        String            @default("medium") // low, medium, high
+  createdAt       DateTime          @default(now())
 }
 
 model OutreachDraft {

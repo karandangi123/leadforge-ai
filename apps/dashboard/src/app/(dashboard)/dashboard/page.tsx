@@ -377,6 +377,13 @@ export default async function Home({
                   items: ["Roast Lab", "Competitor Spy", "Growth Mode", "Content Engine"]
                 },
                 { 
+                  title: "War Room HQ", 
+                  icon: Radar, 
+                  color: "#F59E0B",
+                  href: "/war-room",
+                  items: ["Visual Proof", "Forensic Audits", "Avatar Outreach", "Lead Portals"]
+                },
+                { 
                   title: "Intelligence Hub", 
                   icon: Search, 
                   color: "#8B5CF6",

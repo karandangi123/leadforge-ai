@@ -557,15 +557,259 @@ export function createDemoAdapter(company: string): EnrichmentAdapter {
 
 // ─── Registry — get all configured adapters for a lead ───────────────────────
 
-export function getEnrichmentAdapters(company: string, isDemo: boolean): EnrichmentAdapter[] {
+/**
+ * AI Signal Execution Adapter — Executes a custom ResearchPlan
+ * This is the "Agentic" part of the enrichment.
+ */
+export function createAiSignalExecutionAdapter(
+  plan: any, // Using any for now to avoid circular deps or complex typing in this view
+  isDemo: boolean
+): EnrichmentAdapter {
+  return {
+    name: "AI_SIGNAL_AGENT",
+    priority: 5, // Runs after basic firmographics but before fallback
+    signalKinds: ["TECHNOGRAPHIC", "INTENT", "FIRMOGRAPHIC"],
+    isAvailable: () => Boolean(process.env.OPENAI_API_KEY),
+    async enrich(input) {
+      if (!plan || !plan.tasks) return emptyResult("AI_SIGNAL_AGENT", "No plan provided");
+      if (isDemo) return emptyResult("AI_SIGNAL_AGENT", "Agentic research skipped in demo");
+
+      const apiKey = process.env.OPENAI_API_KEY!;
+      const results: Array<{ task: string; result: string; signalFound: boolean }> = [];
+
+      for (const task of plan.tasks) {
+        try {
+          let rawData = "";
+          const targetUrl = task.target.startsWith("http") 
+            ? task.target 
+            : `https://${extractDomain(input.website ?? input.company)}${task.target}`;
+
+          if (task.type === "file_check" || task.type === "scrape") {
+            const res = await fetch(targetUrl, { signal: AbortSignal.timeout(5000) });
+            if (res.ok) {
+              rawData = (await res.text()).substring(0, 5000); // Limit context
+            } else {
+              rawData = `Failed to fetch: ${res.status}`;
+            }
+          }
+
+          // Use a more advanced prompt for interpretation
+          const evalRes = await fetch("https://api.openai.com/v1/chat/completions", {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${apiKey}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              model: "gpt-4o", // Use high-fidelity model for interpretation to ensure 100% accuracy
+              messages: [
+                { 
+                  role: "system", 
+                  content: "You are a Forensic Technical Analyst. Your goal is to find 100% factual proof for a signal in raw web data. If you are not 100% certain, you MUST mark 'confirmed' as false." 
+                },
+                { 
+                  role: "user", 
+                  content: `Objective: ${task.objective}\nExpected Signal: ${task.expectedSignal}\nRaw Data: ${rawData}\n\nTask:
+1. Analyze the raw data.
+2. If the signal is found, provide the EXACT quote or line that proves it.
+3. Determine 'confirmed' (boolean).
+4. Provide a 'confidence_explanation'.` 
+                },
+              ],
+              response_format: { type: "json_object" },
+              temperature: 0,
+            }),
+          });
+
+          if (evalRes.ok) {
+            const completion = await evalRes.json() as any;
+            const evalData = JSON.parse(completion.choices[0].message.content);
+            
+            // Only add to results if confidence is absolute or explicitly reasoning is sound
+            if (evalData.confirmed) {
+              results.push({ 
+                task: task.objective, 
+                result: `${evalData.summary} (Proof: "${evalData.quote ?? "Direct Observation"}")`, 
+                signalFound: true 
+              });
+            } else {
+              results.push({
+                task: task.objective,
+                result: "Inconclusive or Signal Not Found.",
+                signalFound: false
+              });
+            }
+          }
+        } catch (e) {
+          console.error(`[AI_SIGNAL_AGENT] Task failed: ${task.objective}`, e);
+        }
+      }
+
+      // Filter for only confirmed signals to maintain 100% truth profile
+      const confirmedResults = results.filter(r => r.signalFound);
+      
+      const data: Partial<EnrichmentData> = {
+        description: (plan.rationale + "\n\n" + (confirmedResults.length > 0 
+          ? "VERIFIED SIGNALS:\n" + confirmedResults.map(r => `- ${r.task}: ${r.result}`).join("\n")
+          : "No conclusive custom signals identified.")).substring(0, 2000),
+      };
+
+      const fieldsEnriched = ["description"];
+      const confidence: FieldConfidence = { description: confirmedResults.length > 0 ? 100 : 0 };
+
+      return { provider: "AI_SIGNAL_AGENT", data, confidence, fieldsEnriched, fetchedAt: new Date().toISOString() };
+    },
+  };
+}
+
+/**
+ * Vision Intelligence Adapter — Uses GPT-4o Vision to "look" at the site
+ * Detects UX debt, broken social proof, and visual tech markers.
+ */
+export function createVisionAdapter(isDemo: boolean): EnrichmentAdapter {
+  return {
+    name: "VISION_AGENT",
+    priority: 6, // Runs after technical signals
+    signalKinds: ["TECHNOGRAPHIC", "FIRMOGRAPHIC"],
+    isAvailable: () => Boolean(process.env.OPENAI_API_KEY),
+    async enrich(input) {
+      if (isDemo || !input.website) return emptyResult("VISION_AGENT", "Vision skipped in demo");
+
+      try {
+        const { VisionAgent } = await import("../../agents/src/reasoning/vision-agent");
+        const visionResult = await VisionAgent.analyzeWebsite(input.website);
+        
+        const data: Partial<EnrichmentData> = {
+          description: `VISUAL INTELLIGENCE REPORT:\n${visionResult.data.summary}\n\nSignals Detected:\n${visionResult.data.signals.map(s => `- [${s.kind}] (${s.severity}) ${s.finding} -> Rec: ${s.recommendation}`).join("\n")}`,
+        };
+
+        const fieldsEnriched = ["description"];
+        const confidence: FieldConfidence = { description: 95 };
+
+        return { provider: "VISION_AGENT", data, confidence, fieldsEnriched, fetchedAt: new Date().toISOString() };
+      } catch (e) {
+        console.error("[VISION_AGENT] Analysis failed", e);
+        return emptyResult("VISION_AGENT", "Vision analysis failed");
+      }
+    },
+  };
+}
+
+/**
+ * Competitor Spy Adapter — Detects rival tracking pixels and generates rip-and-replace angles.
+ */
+export function createCompetitorSpyAdapter(isDemo: boolean): EnrichmentAdapter {
+  return {
+    name: "COMPETITOR_SPY",
+    priority: 4, // Runs before vision but after basic tech
+    signalKinds: ["TECHNOGRAPHIC", "INTENT"],
+    isAvailable: () => true,
+    async enrich(input) {
+      if (isDemo || !input.website) return emptyResult("COMPETITOR_SPY", "Spying skipped in demo");
+
+      try {
+        // We need the raw HTML for pixel detection
+        const res = await fetch(input.website, { signal: AbortSignal.timeout(5000) });
+        const html = res.ok ? await res.text() : "";
+
+        const { CompetitorSpyAgent } = await import("../../agents/src/reasoning/competitor-spy");
+        const spyResult = await CompetitorSpyAgent.scanForCompetitors(input.website, html);
+        
+        if (spyResult.data.competitorsFound.length === 0) {
+          return emptyResult("COMPETITOR_SPY", "No competitor pixels found.");
+        }
+
+        const data: Partial<EnrichmentData> = {
+          description: `COMPETITOR INTELLIGENCE:\n${spyResult.data.summary}\n\nTargets:\n${spyResult.data.competitorsFound.map(c => `- ${c.competitorName}: ${c.ripAndReplaceAngle}`).join("\n")}`,
+        };
+
+        const fieldsEnriched = ["description"];
+        const confidence: FieldConfidence = { description: 100 };
+
+        return { provider: "COMPETITOR_SPY", data, confidence, fieldsEnriched, fetchedAt: new Date().toISOString() };
+      } catch (e) {
+        console.error("[COMPETITOR_SPY] Scan failed", e);
+        return emptyResult("COMPETITOR_SPY", "Scan failed");
+      }
+    },
+  };
+}
+
+/**
+ * Social Pulse Adapter — Scrapes social interactions for intent signals.
+ */
+export function createSocialPulseAdapter(plan: any, isDemo: boolean): EnrichmentAdapter {
+  return {
+    name: "SOCIAL_PULSE_AGENT",
+    priority: 7,
+    signalKinds: ["INTENT", "SOCIAL"],
+    isAvailable: () => Boolean(process.env.OPENAI_API_KEY),
+    async enrich(input) {
+      if (isDemo || !plan) return emptyResult("SOCIAL_PULSE_AGENT", "Pulse skipped in demo");
+
+      const pulseTasks = plan.tasks.filter((t: any) => t.type === "social_pulse");
+      if (pulseTasks.length === 0) return emptyResult("SOCIAL_PULSE_AGENT", "No pulse tasks in plan");
+
+      const allSignals: any[] = [];
+      for (const task of pulseTasks) {
+        try {
+          // 1. Fetch Social Data (In a real app, this would use a dedicated social scraper)
+          const res = await fetch(task.target, { signal: AbortSignal.timeout(10000) });
+          const html = res.ok ? await res.text() : "";
+
+          // 2. Analyze with Agent
+          const { SocialPulseAgent } = await import("../../agents/src/reasoning/social-pulse");
+          const pulseResult = await SocialPulseAgent.analyzeSocialInteractions(task.target, html);
+          allSignals.push(...pulseResult.data.signals);
+        } catch (e) {
+          console.error(`[SOCIAL_PULSE_AGENT] Task failed: ${task.objective}`, e);
+        }
+      }
+
+      const data: Partial<EnrichmentData> = {
+        description: `SOCIAL INTENT PULSE:\n${allSignals.length > 0 
+          ? allSignals.map(s => `- [${s.intentCategory}] ${s.personName}: "${s.content.substring(0, 50)}..." -> Hook: ${s.suggestedHook}`).join("\n")
+          : "No high-intent social signals identified."}`,
+      };
+
+      const fieldsEnriched = ["description"];
+      const confidence: FieldConfidence = { description: 90 };
+
+      return { provider: "SOCIAL_PULSE_AGENT", data, confidence, fieldsEnriched, fetchedAt: new Date().toISOString() };
+    },
+  };
+}
+
+export function getEnrichmentAdapters(
+  company: string, 
+  isDemo: boolean, 
+  plan?: any
+): EnrichmentAdapter[] {
   if (isDemo) return [createDemoAdapter(company)];
 
-  return [
+  const baseAdapters = [
     clearbitAdapter,
     apolloAdapter,
     builtwithAdapter,
     openAiFallbackAdapter,
   ].filter(a => a.isAvailable());
+
+  // Add Reasoning-led Adapters
+  if (plan) {
+    baseAdapters.push(createAiSignalExecutionAdapter(plan, isDemo));
+    baseAdapters.push(createCompetitorSpyAdapter(isDemo));
+    baseAdapters.push(createSocialPulseAdapter(plan, isDemo));
+    
+    // Automatically add Vision if the plan implies UI/UX research
+    const needsVision = plan.tasks.some((t: any) => 
+      t.type === "scrape" || t.objective.toLowerCase().includes("ux") || t.objective.toLowerCase().includes("visual")
+    );
+    if (needsVision) {
+      baseAdapters.push(createVisionAdapter(isDemo));
+    }
+  }
+
+  return baseAdapters;
 }
 
 // ─── Utilities ────────────────────────────────────────────────────────────────

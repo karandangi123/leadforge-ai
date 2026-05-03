@@ -625,7 +625,7 @@ export async function getDashboardLeads(): Promise<LeadDataState> {
         outcomeEvents: true,
         followUpReminders: { orderBy: { dueAt: "asc" } },
         // @ts-ignore - Prisma types may be stale in monorepo cache
-        lastStageChangedAt: true,
+        // lastStageChangedAt: true,
       },
     });
     const workspace = await prisma.workspace.findUnique({
@@ -781,11 +781,8 @@ export async function getLeadDetail(leadId: string): Promise<LeadDetailState | n
       id: audit.id,
       status: audit.status,
       overall: audit.overallScore,
-      clarity: audit.clarityScore,
-      conversion: audit.conversionScore,
-      trust: audit.trustScore,
-      seo: audit.seoScore,
-      speed: audit.speedScore,
+      mobile: (audit as any).mobileScore,
+      desktop: (audit as any).desktopScore,
       findings: readStringList(audit.findings),
     }));
     const drafts = lead.outreachDrafts.map((draft) => {

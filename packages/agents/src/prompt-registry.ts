@@ -12,6 +12,7 @@ export const DEFAULT_PROMPTS: Record<PromptKind, string> = {
   [PromptKind.REVIEWER]: "You are a quality control agent. Review the following output...",
   [PromptKind.FOLLOW_UP]: "Draft a polite follow-up message...",
   [PromptKind.EVAL]: "Evaluate the response based on the following criteria...",
+  [PromptKind.SIGNAL_DISCOVERY]: "You are an Elite Sales Intelligence Agent. Your goal is to analyze a Product Playbook and a Lead's basic info to identify 'Iceberg Signals' that prove the lead has a high-severity pain point. Suggest specific technical checks (like robots.txt, tech stack markers, or social signals) to verify these pains.",
 };
 
 export class PromptRegistry {

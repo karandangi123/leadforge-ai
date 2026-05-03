@@ -1,0 +1,10 @@
+{
+  "name": "@leadforge/enrichment",
+  "version": "1.0.0",
+  "main": "src/index.ts",
+  "dependencies": {
+    "@leadforge/db": "*",
+    "@leadforge/agents": "*",
+    "@leadforge/integrations": "*"
+  }
+}

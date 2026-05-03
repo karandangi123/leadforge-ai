@@ -10,7 +10,7 @@ export type ModelConfig = {
 export const MODEL_REGISTRY: Record<PromptKind, ModelConfig> = {
   [PromptKind.RESEARCH]: {
     provider: "groq",
-    modelId: "llama-3.3-70b-versatile",
+    modelId: "llama-3.1-70b-versatile",
     temperature: 0.2,
   },
   [PromptKind.WEBSITE_AUDIT]: {
@@ -20,7 +20,7 @@ export const MODEL_REGISTRY: Record<PromptKind, ModelConfig> = {
   },
   [PromptKind.OUTREACH]: {
     provider: "groq",
-    modelId: "llama-3.3-70b-versatile",
+    modelId: "llama-3.1-70b-versatile",
     temperature: 0.7,
   },
   [PromptKind.REVIEWER]: {
@@ -35,8 +35,13 @@ export const MODEL_REGISTRY: Record<PromptKind, ModelConfig> = {
   },
   [PromptKind.EVAL]: {
     provider: "groq",
-    modelId: "llama-3.3-70b-versatile",
+    modelId: "llama-3.1-70b-versatile",
     temperature: 0,
+  },
+  [PromptKind.SIGNAL_DISCOVERY]: {
+    provider: "openai",
+    modelId: "gpt-4o",
+    temperature: 0.2,
   },
 };
 

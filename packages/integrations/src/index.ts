@@ -11,3 +11,5 @@ export * from "./crm";
 export * from "./linkedin";
 export * from "./sms";
 export * from "./enrichment";
+export * from "./storage";
+export * from "./heygen";

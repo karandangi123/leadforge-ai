@@ -63,6 +63,13 @@ export default function WarRoom() {
       return;
     }
 
+    // Singleton Research Policy
+    const ongoingAudit = briefs.find(b => b.status === 'AUDIT');
+    if (isAuditing || ongoingAudit) {
+      alert("1 RESEARCH IN PROGRESS, WAIT FOR COMPLETION. We limit concurrent forensic scans to ensure 100% accuracy.");
+      return;
+    }
+
     setIsAuditing(true);
     setAuditProgress(5);
     setTimeLeft(45);
@@ -88,6 +95,13 @@ export default function WarRoom() {
       alert("Please enter a valid website URL.");
       return;
     }
+
+    // Singleton Research Policy
+    const ongoingAudit = briefs.find(b => b.status === 'AUDIT');
+    if (isAuditing || ongoingAudit) {
+      alert("1 RESEARCH IN PROGRESS, WAIT FOR COMPLETION. Please allow the current forensic scan to finish before ingesting new targets.");
+      return;
+    }
     
     setIsIngesting(true);
     try {
@@ -99,7 +113,7 @@ export default function WarRoom() {
         // Refresh leads
         const data = await getWarRoomLeads();
         setBriefs(data.length > 0 ? data : MOCK_BRIEFS);
-        if (data[0]) setSelectedLead(data[0]);
+        if (data[0]) handleSelectLead(data[0]);
       } else {
         alert(res.error || "Ingest failed.");
       }

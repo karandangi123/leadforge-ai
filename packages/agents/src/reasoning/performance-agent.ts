@@ -24,7 +24,6 @@ export class PerformanceAgent {
       {
         metric: "Cumulative Layout Shift (CLS)",
         value: 0.15,
-        status: "needs-improvement",
         status: "poor",
         businessImpact: "Unexpected layout shifts during page load frustrate users and lower Google's experience score.",
         hook: "Your homepage has some noticeable layout shifts during load, which can make it hard for users to click the right button on mobile."

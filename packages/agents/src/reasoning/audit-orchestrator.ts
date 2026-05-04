@@ -37,7 +37,7 @@ export class AuditOrchestrator {
     const logEvent = async (msg: string, progress: number) => {
       await prisma.websiteAudit.update({ where: { id: audit.id }, data: { progress } });
       if (jobId) {
-        await prisma.asyncJob.update({ where: { id: jobId }, data: { progress, step: msg } });
+        await prisma.asyncJob.update({ where: { id: jobId }, data: { progress } });
         await prisma.asyncJobEvent.create({ data: { asyncJobId: jobId, status: "RUNNING", message: msg } });
       }
     };

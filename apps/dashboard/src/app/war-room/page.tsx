@@ -57,15 +57,11 @@ export default function WarRoom() {
     console.log(`[WarRoom] ${msg}`);
   };
 
-  const startDeepAudit = async (leadId: string) => {
-    if (leadId.startsWith('seed-')) {
-      alert("Note: This is a demo lead. Real infrastructure actions are disabled for seeds.");
-      return;
-    }
-
-    // Singleton Research Policy
+    // Singleton Research Policy + 5min Timeout Recovery
     const ongoingAudit = briefs.find(b => b.status === 'AUDIT');
-    if (isAuditing || ongoingAudit) {
+    const isHung = ongoingAudit && (new Date().getTime() - new Date(ongoingAudit.updatedAt || ongoingAudit.createdAt).getTime() > 300000);
+
+    if ((isAuditing || (ongoingAudit && !isHung)) && !leadId.startsWith('force-')) {
       alert("1 RESEARCH IN PROGRESS, WAIT FOR COMPLETION. We limit concurrent forensic scans to ensure 100% accuracy.");
       return;
     }
@@ -85,6 +81,7 @@ export default function WarRoom() {
         setIsAuditing(false);
       }
     } catch (e) {
+      console.error("Deep Audit Failed:", e);
       setIsAuditing(false);
     }
   };
@@ -127,29 +124,35 @@ export default function WarRoom() {
     let pollInterval: NodeJS.Timeout;
     let timerInterval: NodeJS.Timeout;
 
-    if (isAuditing && trackingId) {
-      // Countdown timer
+    if (isAuditing) {
+      // Countdown timer - Starts immediately
       timerInterval = setInterval(() => {
         setTimeLeft(prev => Math.max(0, prev - 1));
       }, 1000);
 
-      pollInterval = setInterval(async () => {
-        const statusRes = await getVisionJobStatus(trackingId);
-        
-        if (statusRes.status === "COMPLETED" || statusRes.status === "SUCCEEDED") {
-          cleanup();
-          const data = await getWarRoomLeads();
-          setBriefs(data.length > 0 ? data : MOCK_BRIEFS);
-          const updated = data.find(l => l.id === selectedLead?.id);
-          if (updated) handleSelectLead(updated);
-        } else if (statusRes.status === "FAILED") {
-          cleanup();
-          alert("Forensic audit failed: Internal timeout.");
-        } else if (statusRes.progress) {
-          setAuditProgress(statusRes.progress);
-          setAuditStep(statusRes.step || "Processing...");
-        }
-      }, 2000);
+      if (trackingId) {
+        pollInterval = setInterval(async () => {
+          try {
+            const statusRes = await getVisionJobStatus(trackingId);
+            
+            if (statusRes.status === "COMPLETED" || statusRes.status === "SUCCEEDED") {
+              cleanup();
+              const data = await getWarRoomLeads();
+              setBriefs(data.length > 0 ? data : MOCK_BRIEFS);
+              const updated = data.find(l => l.id === selectedLead?.id);
+              if (updated) handleSelectLead(updated);
+            } else if (statusRes.status === "FAILED") {
+              cleanup();
+              alert(`Forensic audit failed: ${statusRes.step || "Internal timeout"}`);
+            } else if (statusRes.progress) {
+              setAuditProgress(statusRes.progress);
+              setAuditStep(statusRes.step || "Processing...");
+            }
+          } catch (e) {
+            console.error("Polling error:", e);
+          }
+        }, 2500);
+      }
     }
 
     const cleanup = () => {
@@ -508,7 +511,7 @@ export default function WarRoom() {
                     </div>
                   </div>
                   <p className="text-lg leading-relaxed text-zinc-200">
-                    {selectedLead.executiveSummary}
+                    {selectedLead?.executiveSummary}
                   </p>
                 </div>
               </div>
@@ -516,6 +519,18 @@ export default function WarRoom() {
           )}
         </AnimatePresence>
       </div>
+
+      {loading && (
+        <div className="fixed inset-0 bg-black z-[100] flex flex-col items-center justify-center">
+          <div className="w-32 h-32 relative mb-8">
+            <Radar className="w-full h-full text-emerald-500 animate-spin opacity-20" />
+            <div className="absolute inset-0 flex items-center justify-center">
+              <RefreshCw className="w-12 h-12 text-emerald-500 animate-spin" />
+            </div>
+          </div>
+          <p className="text-zinc-500 font-black uppercase tracking-[0.3em] text-xs">Synchronizing War Room...</p>
+        </div>
+      )}
 
       <style jsx global>{`
         .custom-scrollbar::-webkit-scrollbar { width: 4px; }

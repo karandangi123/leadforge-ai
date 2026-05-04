@@ -43,7 +43,7 @@ export class HeyGenAdapter {
         })
       });
 
-      const data = await response.json();
+      const data = await response.json() as any;
       if (data.error) throw new Error(data.error.message);
 
       return data.data.video_id; // Returns the Job ID for tracking
@@ -62,7 +62,7 @@ export class HeyGenAdapter {
       const response = await fetch(`${this.API_BASE}/video/get_video_info?video_id=${videoId}`, {
         headers: { "X-Api-Key": apiKey || "" }
       });
-      const data = await response.json();
+      const data = await response.json() as any;
       return {
         status: data.data.status, // "completed", "processing", "failed"
         url: data.data.video_url

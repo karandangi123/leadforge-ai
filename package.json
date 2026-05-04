@@ -11,7 +11,7 @@
     "dev:all": "turbo run dev",
     "dev:worker": "npm run dev --workspace apps/worker",
     "worker": "npm run worker --workspace apps/worker",
-    "vercel-build": "npm run db:generate --workspace @leadforge/db && npm run build --workspace apps/dashboard && rm -rf .next && cp -R apps/dashboard/.next .next",
+    "vercel-build": "npm run db:generate --workspace @leadforge/db && npm run typecheck && npm run build --workspace apps/dashboard && rm -rf .next && cp -R apps/dashboard/.next .next",
     "build:all": "npm run build --workspaces --if-present",
     "lint:all": "npm run lint --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present",

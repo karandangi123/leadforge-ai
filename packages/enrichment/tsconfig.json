@@ -11,9 +11,6 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
     "types": ["node"],
-    "paths": {
-      "@leadforge/agents": ["../agents/src/index.ts"]
-    },
     "noEmit": true
   },
   "include": ["src/**/*.ts"]

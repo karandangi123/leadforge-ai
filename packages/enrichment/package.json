@@ -2,9 +2,16 @@
   "name": "@leadforge/enrichment",
   "version": "1.0.0",
   "main": "src/index.ts",
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
   "dependencies": {
     "@leadforge/db": "*",
     "@leadforge/agents": "*",
     "@leadforge/integrations": "*"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "typescript": "^5"
   }
 }

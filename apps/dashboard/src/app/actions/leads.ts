@@ -1,6 +1,6 @@
 "use server";
 
-import { getPrisma } from "@leadforge/db";
+import { getPrisma, LeadStatus } from "@leadforge/db";
 import { getActiveWorkspace } from "@/lib/workspace";
 import { revalidatePath } from "next/cache";
 
@@ -29,7 +29,7 @@ export async function getLeads() {
 /**
  * Update lead status manually (e.g. Reject, Approve, Mark as Research)
  */
-export async function updateLeadStatus(leadId: string, status: any) {
+export async function updateLeadStatus(leadId: string, status: LeadStatus) {
   const prisma = getPrisma();
   
   try {
@@ -48,7 +48,7 @@ export async function updateLeadStatus(leadId: string, status: any) {
 /**
  * Bulk delete or archive leads
  */
-export async function bulkUpdateLeads(leadIds: string[], data: any) {
+export async function bulkUpdateLeads(leadIds: string[], data: Partial<{ status: LeadStatus; ownerName: string; segment: string }>) {
   const prisma = getPrisma();
 
   try {
@@ -67,16 +67,17 @@ export async function bulkUpdateLeads(leadIds: string[], data: any) {
 /**
  * Move a lead to a new stage (Supports both direct call and Form Action)
  */
-export async function moveLeadStage(leadIdOrFormData: string | FormData, status?: any) {
+export async function moveLeadStage(leadIdOrFormData: string | FormData, status?: LeadStatus) {
   const prisma = getPrisma();
   let id: string;
-  let newStatus: any;
+  let newStatus: LeadStatus;
 
   if (leadIdOrFormData instanceof FormData) {
     id = leadIdOrFormData.get("leadId") as string;
-    newStatus = leadIdOrFormData.get("status") as any;
+    newStatus = (leadIdOrFormData.get("status") as string) as LeadStatus;
   } else {
     id = leadIdOrFormData;
+    if (!status) throw new Error("Status is required for stage movement");
     newStatus = status;
   }
   
@@ -98,7 +99,7 @@ export async function moveLeadStage(leadIdOrFormData: string | FormData, status?
 /**
  * Add a new lead manually (Supports both direct call and Form Action)
  */
-export async function addLead(dataOrFormData: any | FormData) {
+export async function addLead(dataOrFormData: Partial<{ company: string; website: string; contactName: string; contactEmail: string; segment: string; ownerName: string; tags: string[]; notes: string }> | FormData) {
   const prisma = getPrisma();
   const workspace = await getActiveWorkspace();
   let data: any;
@@ -139,7 +140,7 @@ export async function addLead(dataOrFormData: any | FormData) {
 /**
  * Create a lead from a Competitor Spy insight or Discovery run
  */
-export async function createLeadFromInsight(dataOrFormData: any | FormData) {
+export async function createLeadFromInsight(dataOrFormData: { company: string; website: string } | FormData) {
   const prisma = getPrisma();
   const workspace = await getActiveWorkspace();
   let data: any;
@@ -240,7 +241,7 @@ export async function updateLeadMetadata(formData: FormData) {
   const prisma = getPrisma();
   const leadId = formData.get("leadId") as string;
   
-  const data: any = {};
+  const data: Partial<{ website: string; contactName: string; contactEmail: string; segment: string; ownerName: string; tags: string[]; notes: string }> & { [key: string]: any } = {};
   const fields = ["website", "contactName", "contactEmail", "segment", "ownerName", "tags", "notes"];
   
   fields.forEach(field => {

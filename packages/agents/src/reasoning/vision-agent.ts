@@ -154,7 +154,7 @@ export class VisionAgent {
     const prompt = `Write a 60-second video walkthrough script for ${company} based on these findings:\n${findingsList}\nKeep it professional and helpful.`;
     const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
     const response = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }) });
-    const result = await response.json();
+    const result = await response.json() as any;
     return result.candidates[0].content.parts[0].text;
   }
 
@@ -167,7 +167,7 @@ export class VisionAgent {
   private static async callGemini(apiKey: string, base64: string, prompt: string): Promise<any> {
     const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
     const response = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ contents: [{ parts: [{ text: prompt }, { inline_data: { mime_type: "image/jpeg", data: base64.replace(/^data:image\/\w+;base64,/, "") } }] }], generationConfig: { response_mime_type: "application/json", temperature: 0 } }) });
-    const result = await response.json();
+    const result = await response.json() as any;
     return JSON.parse(result.candidates[0].content.parts[0].text);
   }
 }

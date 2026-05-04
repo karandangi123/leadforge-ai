@@ -15,7 +15,7 @@ export async function runVisionAudit(leadId: string) {
     // 1. Check for existing hung audits (Recovery Logic)
     const existingLead = await prisma.lead.findUnique({
       where: { id: leadId },
-      select: { status: true }
+      select: { status: true, workspaceId: true }
     });
 
     if (!existingLead) throw new Error("Lead target not found in perimeter.");
@@ -37,8 +37,8 @@ export async function runVisionAudit(leadId: string) {
     // 4. Initialize Job Tracking in DB
     const jobRecord = await prisma.asyncJob.create({
       data: {
-        leadId,
-        type: "VISION_AUDIT",
+        leadId, workspaceId: existingLead.workspaceId,
+        kind: "WEBSITE_AUDIT",
         status: "QUEUED",
         progress: 10,
         payload: { strategy: "forensic_dual_viewport" }
@@ -47,7 +47,7 @@ export async function runVisionAudit(leadId: string) {
 
     // 5. Add to BullMQ with high priority
     const job = await visionQueue.add(`audit-${leadId}`, { 
-      leadId,
+      leadId, workspaceId: existingLead.workspaceId,
       jobRecordId: jobRecord.id 
     }, {
       removeOnComplete: true,

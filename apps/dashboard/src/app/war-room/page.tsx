@@ -20,7 +20,7 @@ import {
   User,
   Radar
 } from "lucide-react";
-import { getWarRoomLeads, getLeadForensicData } from "@/app/actions/war-room";
+import { getWarRoomLeads, getLeadForensicData, getLeadSynthesis } from "@/app/actions/war-room";
 import { runVisionAudit, getVisionJobStatus, fastAudit, cancelVisionAudit } from "@/app/actions/vision-audit";
 import { AnnotatedScreenshot } from "@/components/war-room/annotated-screenshot";
 
@@ -51,6 +51,7 @@ export default function WarRoom() {
   const [fastUrl, setFastUrl] = useState("");
   const [isIngesting, setIsIngesting] = useState(false);
   const [forensicLoading, setForensicLoading] = useState(false);
+  const [synthesisLoading, setSynthesisLoading] = useState(false);
 
   const notify = (msg: string) => {
     console.log(`[WarRoom] ${msg}`);
@@ -183,20 +184,38 @@ export default function WarRoom() {
     setSelectedLead(lead);
     if (!lead || lead.id.startsWith('seed-')) return;
     
+    // 1. Fetch Forensic Data
     setForensicLoading(true);
-    try {
-      const forensic = await getLeadForensicData(lead.id);
+    getLeadForensicData(lead.id).then(forensic => {
       if (forensic) {
-        setSelectedLead((prev: any) => ({
-          ...prev,
-          screenshotUrl: forensic.screenshotUrl,
-          findings: forensic.findings
-        }));
+        setSelectedLead((prev: any) => {
+          if (prev?.id !== lead.id) return prev;
+          return {
+            ...prev,
+            screenshotUrl: forensic.screenshotUrl,
+            findings: forensic.findings
+          };
+        });
       }
-    } catch (e) {
-      console.error("Failed to load forensic data:", e);
-    } finally {
-      setForensicLoading(false);
+    }).finally(() => setForensicLoading(false));
+
+    // 2. Fetch Synthesis if pending
+    if (lead.isPending) {
+      setSynthesisLoading(true);
+      getLeadSynthesis(lead.id).then(synthesis => {
+        if (synthesis) {
+          setSelectedLead((prev: any) => {
+            if (prev?.id !== lead.id) return prev;
+            return {
+              ...prev,
+              ...synthesis,
+              isPending: false
+            };
+          });
+          // Update the list too
+          setBriefs(prev => prev.map(b => b.id === lead.id ? { ...b, ...synthesis, isPending: false } : b));
+        }
+      }).finally(() => setSynthesisLoading(false));
     }
   };
 
@@ -264,6 +283,9 @@ export default function WarRoom() {
             >
               <div className="flex justify-between items-start mb-1">
                 <span className="font-bold text-zinc-100">{brief.company}</span>
+                {brief.isPending && (
+                  <span className="text-[9px] bg-amber-500/10 text-amber-500 px-2 py-0.5 rounded-full border border-amber-500/20 animate-pulse">Syncing...</span>
+                )}
               </div>
               <div className="text-xs text-zinc-500 truncate mb-3">{brief.executiveSummary}</div>
               <div className="flex items-center gap-3">
@@ -385,6 +407,11 @@ export default function WarRoom() {
                 )}
 
                 <div className="p-8 rounded-[2.5rem] bg-gradient-to-br from-emerald-500/10 to-transparent border border-emerald-500/20 relative overflow-hidden group">
+                  {synthesisLoading && (
+                    <div className="absolute inset-0 bg-black/40 backdrop-blur-sm z-10 flex items-center justify-center">
+                      <RefreshCw className="w-5 h-5 text-emerald-500 animate-spin" />
+                    </div>
+                  )}
                   <div className="flex items-center gap-3 mb-6">
                     <div className="w-8 h-8 rounded-xl bg-emerald-500/20 flex items-center justify-center">
                       <Zap className="w-4 h-4 text-emerald-500" />
@@ -396,7 +423,12 @@ export default function WarRoom() {
                   </p>
                 </div>
 
-                <div className="p-8 rounded-[2.5rem] bg-gradient-to-br from-blue-500/10 to-transparent border border-blue-500/20">
+                <div className="p-8 rounded-[2.5rem] bg-gradient-to-br from-blue-500/10 to-transparent border border-blue-500/20 relative overflow-hidden">
+                  {synthesisLoading && (
+                    <div className="absolute inset-0 bg-black/40 backdrop-blur-sm z-10 flex items-center justify-center">
+                      <RefreshCw className="w-5 h-5 text-blue-500 animate-spin" />
+                    </div>
+                  )}
                   <div className="flex items-center gap-3 mb-6">
                     <div className="w-8 h-8 rounded-xl bg-blue-500/20 flex items-center justify-center">
                       <Shield className="w-4 h-4 text-blue-400" />

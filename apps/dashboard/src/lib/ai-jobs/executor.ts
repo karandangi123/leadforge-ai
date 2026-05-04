@@ -334,7 +334,14 @@ async function runWebsiteAuditJob(
             seoScore: agentResult.data.seoScore,
             speedScore: agentResult.data.speedScore,
             overallScore: agentResult.data.overallScore,
-            findings: agentResult.data.findings,
+            findings: {
+              create: (agentResult.data.findings || []).map((f: string) => ({
+                title: f,
+                category: "ux",
+                confidence: 0.8,
+                businessImpact: "Identified during automated audit.",
+              })),
+            },
           },
         },
         agentTraces: {

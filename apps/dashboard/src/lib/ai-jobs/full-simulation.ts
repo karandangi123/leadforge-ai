@@ -40,7 +40,7 @@ async function runSuccessSimulation() {
     // 4. VIDEO SUITE VERIFICATION
     console.log("\n🎬 Step 3: Verifying Video Outreach Suite (Phase 9)...");
     console.log(`   - Script Generated: "${result.videoScript.substring(0, 50)}..."`);
-    console.log(`   - Video Synthesis Job: ${result.videoUrl ? 'ENGAGED' : 'SIMULATED (No API Key)'}`);
+    console.log(`   - Video Synthesis Job: ${result.videoId ? 'ENGAGED' : 'SIMULATED (No API Key)'}`);
 
     // 5. PORTAL VALIDATION
     const audit = await prisma.websiteAudit.findFirst({

@@ -58,7 +58,7 @@ export async function getWarRoomLeads() {
       silverBulletHook: brief.silverBulletHook,
       competitorGap: brief.competitorGap,
       visualSignal: brief.visualSignal,
-      screenshotUrl: desktopScreenshot?.url,
+      screenshotUrl: desktopScreenshot?.imageUrl,
       findings: desktopScreenshot?.annotations?.map(a => ({
         x: a.x,
         y: a.y,

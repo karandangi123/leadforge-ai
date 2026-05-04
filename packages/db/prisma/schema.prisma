@@ -435,6 +435,7 @@ model WebsiteAudit {
   conversionScore Int?
   trustScore      Int?
   seoScore        Int?
+  speedScore      Int?
   mobileScore     Int?           // New for Phase 8.3
   desktopScore    Int?           // New for Phase 8.3
   videoScript     String?        @db.Text

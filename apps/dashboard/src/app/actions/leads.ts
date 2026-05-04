@@ -168,3 +168,84 @@ export async function createSampleLead() {
     segment: "SaaS",
   });
 }
+/**
+ * Log a lead outcome (won/lost/etc) for analytics
+ */
+export async function recordLeadOutcome(formData: FormData) {
+  const prisma = getPrisma();
+  const leadId = formData.get("leadId") as string;
+  const eventType = formData.get("eventType") as string;
+
+  try {
+    await prisma.outcomeEvent.create({
+      data: {
+        leadId,
+        eventType,
+        note: `Manual outcome logged via dashboard`
+      }
+    });
+    revalidatePath(`/leads/${leadId}`);
+    revalidatePath("/dashboard");
+    return { success: true };
+  } catch (error) {
+    console.error("[LeadsAction] Failed to record outcome", error);
+    return { success: false };
+  }
+}
+
+/**
+ * Update lead metadata (website, contact, segment, etc)
+ */
+export async function updateLeadMetadata(formData: FormData) {
+  const prisma = getPrisma();
+  const leadId = formData.get("leadId") as string;
+  
+  const data: any = {};
+  const fields = ["website", "contactName", "contactEmail", "segment", "ownerName", "tags", "notes"];
+  
+  fields.forEach(field => {
+    const value = formData.get(field);
+    if (value !== null) {
+      if (field === "tags") {
+        data.tags = (value as string).split(",").map(t => t.trim()).filter(t => t);
+      } else {
+        data[field] = value;
+      }
+    }
+  });
+
+  try {
+    await prisma.lead.update({
+      where: { id: leadId },
+      data
+    });
+    revalidatePath(`/leads/${leadId}`);
+    revalidatePath("/leads");
+    revalidatePath("/dashboard");
+    return { success: true };
+  } catch (error) {
+    console.error("[LeadsAction] Failed to update metadata", error);
+    return { success: false };
+  }
+}
+
+/**
+ * Set a human-defined next action for a lead
+ */
+export async function setLeadHumanNextAction(formData: FormData) {
+  const prisma = getPrisma();
+  const leadId = formData.get("leadId") as string;
+  const humanNextAction = formData.get("humanNextAction") as string;
+
+  try {
+    await prisma.lead.update({
+      where: { id: leadId },
+      data: { humanNextAction }
+    });
+    revalidatePath(`/leads/${leadId}`);
+    return { success: true };
+  } catch (error) {
+    console.error("[LeadsAction] Failed to set human action", error);
+    return { success: false };
+  }
+}

@@ -71,6 +71,29 @@ export async function syncLeadToExternal(formData: FormData) {
   revalidatePath(`/leads/${leadId}`);
   revalidatePath("/");
 }
+/**
+ * Push an approved outreach draft to Gmail as a real draft
+ */
+export async function createRealGmailDraft(formData: FormData) {
+  const prisma = getPrisma();
+  const leadId = formData.get("leadId") as string;
+  const outreachId = formData.get("outreachId") as string;
+
+  try {
+    // Note: Actual Gmail API integration happens in the background worker
+    // This action marks the draft as "QUEUED_FOR_SYNC"
+    await prisma.outreachDraft.update({
+      where: { id: outreachId },
+      data: { gmailStatus: "QUEUED" }
+    });
+    
+    revalidatePath(`/leads/${leadId}`);
+    return { success: true };
+  } catch (error) {
+    console.error("[IntegrationsAction] Failed to queue Gmail draft", error);
+    return { success: false };
+  }
+}
 
 async function executeExternalSync(provider: string, payload: unknown) {
   console.log(`[Sync] Sending to ${provider}:`, payload);

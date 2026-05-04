@@ -8,3 +8,6 @@ export * from "./actions/integrations";
 export * from "./actions/outreach";
 export * from "./actions/multichannel";
 export * from "./actions/enrichment";
+export * from "./actions/audit";
+export * from "./actions/vision-audit";
+export * from "./actions/war-room";

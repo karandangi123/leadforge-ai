@@ -111,6 +111,10 @@ export type EnrichmentData = {
 
   // News
   recentNews?: NewsItem[];
+
+  // Contact (Person-level fallback)
+  contactEmail?: string;
+  contactName?: string;
 };
 
 // ─── Per-field confidence map ─────────────────────────────────────────────────

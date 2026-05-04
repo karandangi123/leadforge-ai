@@ -95,9 +95,28 @@ export async function moveLeadStage(leadIdOrFormData: string | FormData, status?
 /**
  * Add a new lead manually
  */
-export async function addLead(data: any) {
+/**
+ * Add a new lead manually (Supports both direct call and Form Action)
+ */
+export async function addLead(dataOrFormData: any | FormData) {
   const prisma = getPrisma();
   const workspace = await getActiveWorkspace();
+  let data: any;
+
+  if (dataOrFormData instanceof FormData) {
+    data = {
+      company: dataOrFormData.get("company") as string,
+      website: dataOrFormData.get("website") as string,
+      contactName: dataOrFormData.get("contactName") as string,
+      contactEmail: dataOrFormData.get("contactEmail") as string,
+      segment: dataOrFormData.get("segment") as string,
+      ownerName: dataOrFormData.get("ownerName") as string,
+      tags: (dataOrFormData.get("tags") as string)?.split(',').map(t => t.trim()).filter(Boolean) || [],
+      notes: dataOrFormData.get("notes") as string,
+    };
+  } else {
+    data = dataOrFormData;
+  }
 
   try {
     const lead = await prisma.lead.create({
@@ -109,19 +128,30 @@ export async function addLead(data: any) {
     });
     revalidatePath("/leads");
     revalidatePath("/dashboard");
+    
+    if (dataOrFormData instanceof FormData) return;
     return { success: true, lead };
   } catch (error) {
     console.error("[LeadsAction] Add lead failed", error);
-     
   }
 }
 
 /**
  * Create a lead from a Competitor Spy insight or Discovery run
  */
-export async function createLeadFromInsight(data: any) {
+export async function createLeadFromInsight(dataOrFormData: any | FormData) {
   const prisma = getPrisma();
   const workspace = await getActiveWorkspace();
+  let data: any;
+
+  if (dataOrFormData instanceof FormData) {
+    data = {
+      company: dataOrFormData.get("company") as string,
+      website: dataOrFormData.get("website") as string,
+    };
+  } else {
+    data = dataOrFormData;
+  }
 
   try {
     const lead = await prisma.lead.create({
@@ -134,16 +164,18 @@ export async function createLeadFromInsight(data: any) {
       }
     });
     revalidatePath("/dashboard");
+    
+    if (dataOrFormData instanceof FormData) return;
     return { success: true, leadId: lead.id };
   } catch (error) {
     console.error("[LeadsAction] Create from insight failed", error);
-     
   }
 }
 
 export type CsvImportState = {
   message: string;
   count?: number;
+  results: Array<{ row: number; company: string; status: string; detail: string }>;
 };
 
 /**
@@ -156,11 +188,11 @@ export async function importLeadsCsv(state: CsvImportState, formData: FormData):
   // Simulation of CSV parsing logic for now
   try {
     const file = formData.get("file") as File;
-    if (!file) return { message: "No file uploaded" };
+    if (!file) return { message: "No file uploaded", results: [] };
 
-    return { message: "Successfully imported leads (Simulation)", count: 12 };
+    return { message: "Successfully imported leads (Simulation)", count: 12, results: [] };
   } catch (e) {
-    return { message: "Failed to parse CSV" };
+    return { message: "Failed to parse CSV", results: [] };
   }
 }
 

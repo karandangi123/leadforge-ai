@@ -1,7 +1,7 @@
 import { PromptKind } from "@leadforge/db";
 
 export type ModelConfig = {
-  provider: "openai" | "anthropic" | "groq" | "local";
+  provider: "openai" | "anthropic" | "groq" | "local" | "video-synthesis-engaged";
   modelId: string;
   maxTokens?: number;
   temperature?: number;

@@ -35,7 +35,14 @@ export const visionWorker = new Worker(
 
       const result = await VisionAgent.analyzeWebsite(leadId);
 
-      // 2. Update Job Status to SUCCEEDED
+      // 2. Check if user cancelled while we were working
+      const currentJob = await prisma.asyncJob.findUnique({ where: { id: jobRecordId } });
+      if (currentJob?.status === "CANCELLED") {
+        console.log(`[VisionWorker] Job ${jobRecordId} was cancelled by user. Discarding results.`);
+        return null;
+      }
+
+      // 3. Update Job Status to SUCCEEDED
       await prisma.asyncJob.update({
         where: { id: jobRecordId },
         data: { 

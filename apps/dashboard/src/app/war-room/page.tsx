@@ -173,6 +173,15 @@ export default function WarRoom() {
     await cancelVisionAudit(trackingId, selectedLead.id);
     setIsAuditing(false);
     setTrackingId(null);
+    
+    // Crucial: Refresh local state so singleton policy allows new search
+    const data = await getWarRoomLeads();
+    setBriefs(data.length > 0 ? data : MOCK_BRIEFS);
+    if (selectedLead) {
+      const updated = data.find(l => l.id === selectedLead.id);
+      if (updated) handleSelectLead(updated);
+    }
+    
     notify("Audit cancelled.");
   };
 

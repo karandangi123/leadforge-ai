@@ -25,21 +25,15 @@ export const visionWorker = new Worker(
         where: { id: jobRecordId },
         data: { 
           status: "RUNNING", 
-          progress: 10,
+          progress: 5,
           startedAt: new Date(),
           events: {
-            create: { status: "RUNNING", message: "Forensic Orchestrator engaged. Normalizing perimeter..." }
+            create: { status: "RUNNING", message: "Forensic Orchestrator engaged. Engaging Intelligence engines..." }
           }
         }
       });
 
-      // Staged Progress streaming (Phase 4 Simulation in Worker)
-      await prisma.asyncJobEvent.create({ data: { asyncJobId: jobRecordId, status: "RUNNING", message: "IdentityAgent: Detecting company profile..." } });
-      
-      const result = await AuditOrchestrator.runFullAudit(leadId);
-
-      await prisma.asyncJobEvent.create({ data: { asyncJobId: jobRecordId, status: "RUNNING", message: "VisionAgent: Analyzing visual hierarchy..." } });
-      await prisma.asyncJobEvent.create({ data: { asyncJobId: jobRecordId, status: "RUNNING", message: "TechnicalAgent: Verifying deterministic security..." } });
+      const result = await AuditOrchestrator.runFullAudit(leadId, jobRecordId);
 
       // 2. Check if user cancelled while we were working
       const currentJob = await prisma.asyncJob.findUnique({ where: { id: jobRecordId } });

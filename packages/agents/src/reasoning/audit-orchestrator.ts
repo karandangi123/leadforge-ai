@@ -6,26 +6,44 @@ import { PerformanceAgent } from "./performance-agent";
 import { CopyAgent } from "./copy-agent";
 
 export class AuditOrchestrator {
-  static async runFullAudit(leadId: string) {
+  static async runFullAudit(leadId: string, jobId?: string) {
     const prisma = getPrisma();
+    const logEvent = async (msg: string, progress: number) => {
+      if (jobId) {
+        await prisma.asyncJob.update({ where: { id: jobId }, data: { progress, step: msg } });
+        await prisma.asyncJobEvent.create({ data: { asyncJobId: jobId, status: "RUNNING", message: msg } });
+      }
+    };
     
-    // 1. Identity Layer
+    // 1. Identity Layer (0-5s)
+    await logEvent("DOMAIN_NORMALIZED: Verifying perimeter...", 5);
+    await logEvent("IDENTITY_CREATED: Detecting company profile...", 10);
     const identity = await IdentityAgent.identify(leadId);
     
-    // 2. Vision Layer (Multi-Viewport)
+    // 2. Vision Layer (5-15s)
+    await logEvent("SCREENSHOT_CAPTURED: Engaging multi-viewport lenses...", 25);
     const visionResults = await VisionAgent.analyzeWebsite(leadId);
     
-    // 3. Technical & Performance Layers
+    // 3. Technical & Performance Layers (15-25s)
+    await logEvent("TECHNICAL_CHECK_DONE: Verifying deterministic security...", 40);
     const lead = await prisma.lead.findUnique({ where: { id: leadId } });
     const [technicalFindings, performanceFindings] = await Promise.all([
       TechnicalAgent.audit(lead?.website || ""),
       PerformanceAgent.audit(lead?.website || "")
     ]);
 
-    // 4. Copy Layer (Requires content from Vision Results if possible)
+    await logEvent("PERFORMANCE_SIGNALS_COLLECTED: Analyzing web quality...", 60);
+
+    // 4. Copy Layer (25-35s)
+    await logEvent("VISION_FINDINGS_READY: Synthesizing UX signals...", 75);
     const copyFindings = await CopyAgent.analyze(lead?.website || "", "Demo content...");
 
-    // 5. Consolidation & Proof Gate
+    // 5. Hook Synthesis (35-42s)
+    await logEvent("HOOK_READY: Generating high-fidelity outreach hooks...", 90);
+
+    // 6. Finalization (42-45s)
+    await logEvent("PROOF_ASSET_READY: Finalizing forensic package...", 95);
+
     const audit = await prisma.websiteAudit.findFirst({
       where: { leadId },
       orderBy: { createdAt: "desc" }

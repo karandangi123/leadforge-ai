@@ -53,6 +53,7 @@ export default function WarRoom() {
   const [isAuditing, setIsAuditing] = useState(false);
   const [timeLeft, setTimeLeft] = useState(45);
   const [trackingId, setTrackingId] = useState<string | null>(null);
+  const [auditEvents, setAuditEvents] = useState<string[]>([]);
   const [fastUrl, setFastUrl] = useState("");
   const [isIngesting, setIsIngesting] = useState(false);
   const [forensicLoading, setForensicLoading] = useState(false);
@@ -63,6 +64,7 @@ export default function WarRoom() {
   };
 
   const startDeepAudit = async (leadId: string) => {
+    setAuditEvents([]);
     if (leadId.startsWith('seed-')) {
       alert("Note: This is a demo lead. Real infrastructure actions are disabled for seeds.");
       return;
@@ -160,7 +162,10 @@ export default function WarRoom() {
               cancelAuditLocally();
             } else {
               if (statusRes.progress) setAuditProgress(statusRes.progress);
-              if (statusRes.step) setAuditStep(statusRes.step);
+              if (statusRes.step) {
+                setAuditStep(statusRes.step);
+                setAuditEvents(prev => prev.includes(statusRes.step) ? prev : [...prev, statusRes.step]);
+              }
             }
           } catch (e) {
             console.error("Poll fail:", e);
@@ -523,6 +528,44 @@ export default function WarRoom() {
                         animate={{ width: `${auditProgress}%` }}
                         className="h-full bg-gradient-to-r from-amber-500 to-orange-500"
                       />
+                    </div>
+
+                    <div className="max-w-md w-full mb-12 text-left space-y-3">
+                      <div className="flex items-center justify-between mb-2">
+                        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">Live Intelligence Stream</p>
+                        <div className="flex gap-1">
+                          <div className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse" />
+                          <div className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse delay-75" />
+                          <div className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse delay-150" />
+                        </div>
+                      </div>
+                      <div className="space-y-2 bg-black/40 rounded-3xl p-6 border border-white/5 backdrop-blur-md max-h-48 overflow-y-auto custom-scrollbar">
+                        {auditEvents.length === 0 && (
+                          <div className="flex items-center gap-3 text-zinc-600 animate-pulse">
+                            <Activity className="w-3 h-3" />
+                            <span className="text-[10px] font-bold uppercase tracking-widest">Waiting for Intelligence Engines...</span>
+                          </div>
+                        )}
+                        {auditEvents.map((event, i) => (
+                          <motion.div 
+                            key={i}
+                            initial={{ opacity: 0, x: -10 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            className="flex items-start gap-3 group"
+                          >
+                            <div className="mt-1 w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]" />
+                            <div className="flex-1">
+                              <p className="text-[10px] font-black uppercase tracking-widest text-zinc-300 group-last:text-emerald-400 transition-colors">
+                                {event.split(':')[0]}
+                              </p>
+                              <p className="text-[10px] font-bold text-zinc-500 group-last:text-zinc-300 transition-colors">
+                                {event.split(':')[1] || "Processing..."}
+                              </p>
+                            </div>
+                            <span className="text-[8px] font-bold text-zinc-700 uppercase">Step {i + 1}</span>
+                          </motion.div>
+                        ))}
+                      </div>
                     </div>
 
                     <button 

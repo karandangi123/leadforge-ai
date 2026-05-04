@@ -15,6 +15,7 @@ export * from "./reasoning/outreach-agent";
 export * from "./reasoning/prospecting-loop";
 export * from "./reasoning/global-signal-lab";
 export * from "./reasoning/brief-synthesis";
+export * from "./reasoning/audit-orchestrator";
 
 // Creative Layer
 export * from "./creative/clone-agent";

@@ -31,13 +31,13 @@ async function runAccuracyTest() {
 
     console.log("\n✅ Audit Completed Successfully!");
     console.log(`⏱️ Duration: ${duration.toFixed(2)}s`);
-    console.log(`🧠 AI Model: ${result.model}`);
-    console.log(`📊 UX Score: ${result.data.uxScore}/100`);
-    console.log(`🎯 Signals Found: ${result.data.signals.length}`);
+    console.log(`🧠 AI Model: vision-v1`);
+    console.log(`📊 UX Score: ${result.uxScore}/100`);
+    console.log(`🎯 Signals Found: ${result.signals.length}`);
     
     // 3. Verify Coordinate Accuracy
     console.log("\n--- Finding Details ---");
-    result.data.signals.forEach((s, i) => {
+    result.signals.forEach((s: any, i: number) => {
       console.log(`${i+1}. [${s.kind}] ${s.finding}`);
       console.log(`   📍 Coords: (${s.x}%, ${s.y}%)`);
       console.log(`   💡 Pitch: ${s.recommendation}\n`);
@@ -46,11 +46,11 @@ async function runAccuracyTest() {
     // 4. Persistence Check
     const dbAudit = await prisma.websiteAudit.findFirst({
       where: { leadId: lead.id },
-      include: { screenshots: { include: { annotations: true } } },
+      include: { screenshots: true, findings: true },
       orderBy: { createdAt: 'desc' }
     });
 
-    if (dbAudit?.screenshots[0]?.annotations.length === result.data.signals.length) {
+    if (dbAudit?.findings.length === result.signals.length) {
       console.log("💾 Persistence Accuracy: 100% (DB matches AI Output)");
     } else {
       console.log("⚠️ Persistence Mismatch detected!");

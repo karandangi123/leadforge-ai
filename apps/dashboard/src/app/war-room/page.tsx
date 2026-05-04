@@ -125,41 +125,53 @@ export default function WarRoom() {
     let timerInterval: NodeJS.Timeout;
 
     if (isAuditing) {
-      // Countdown timer - Starts immediately
+      // Countdown timer - Absolute Priority
       timerInterval = setInterval(() => {
-        setTimeLeft(prev => Math.max(0, prev - 1));
+        setTimeLeft(prev => {
+          if (prev <= 1) {
+            // Auto-fallback if it takes too long without server response
+            setAuditStep("Finalizing results...");
+            return 0;
+          }
+          return prev - 1;
+        });
       }, 1000);
 
+      // Polling Logic
       if (trackingId) {
         pollInterval = setInterval(async () => {
           try {
             const statusRes = await getVisionJobStatus(trackingId);
-            
             if (statusRes.status === "COMPLETED" || statusRes.status === "SUCCEEDED") {
-              cleanup();
-              const data = await getWarRoomLeads();
-              setBriefs(data.length > 0 ? data : MOCK_BRIEFS);
-              const updated = data.find(l => l.id === selectedLead?.id);
-              if (updated) handleSelectLead(updated);
+              finishAudit();
             } else if (statusRes.status === "FAILED") {
-              cleanup();
-              alert(`Forensic audit failed: ${statusRes.step || "Internal timeout"}`);
+              alert(`Audit failed: ${statusRes.step}`);
+              cancelAuditLocally();
             } else if (statusRes.progress) {
               setAuditProgress(statusRes.progress);
-              setAuditStep(statusRes.step || "Processing...");
+              setAuditStep(statusRes.step || "Analyzing...");
             }
           } catch (e) {
-            console.error("Polling error:", e);
+            console.error("Poll fail:", e);
           }
-        }, 2500);
+        }, 3000);
       }
     }
 
-    const cleanup = () => {
+    const finishAudit = async () => {
       setIsAuditing(false);
       setTrackingId(null);
-      clearInterval(pollInterval);
-      clearInterval(timerInterval);
+      const data = await getWarRoomLeads();
+      setBriefs(data.length > 0 ? data : MOCK_BRIEFS);
+      if (selectedLead) {
+        const updated = data.find(l => l.id === selectedLead.id);
+        if (updated) handleSelectLead(updated);
+      }
+    };
+
+    const cancelAuditLocally = () => {
+      setIsAuditing(false);
+      setTrackingId(null);
     };
 
     return () => {
@@ -169,10 +181,7 @@ export default function WarRoom() {
   }, [isAuditing, trackingId, selectedLead?.id]);
 
   const stopAudit = async () => {
-    const confirmStop = confirm("Are you sure you want to stop this forensic audit?");
-    if (!confirmStop) return;
-
-    // Aggressive UI reset
+    // Instant UI feedback - NO CONFIRM for emergency stop
     const tid = trackingId;
     const lid = selectedLead?.id;
 
@@ -180,24 +189,18 @@ export default function WarRoom() {
     setTrackingId(null);
     setAuditProgress(0);
     setAuditStep("");
+    setTimeLeft(45);
     
     try {
       if (tid && lid) {
         await cancelVisionAudit(tid, lid);
-      }
-      
-      // Refresh local state
-      const data = await getWarRoomLeads();
-      setBriefs(data.length > 0 ? data : MOCK_BRIEFS);
-      if (lid) {
-        const updated = data.find(l => l.id === lid);
-        if (updated) handleSelectLead(updated);
+        // Refresh leads list to clear 'AUDIT' status from DB
+        const data = await getWarRoomLeads();
+        setBriefs(data.length > 0 ? data : MOCK_BRIEFS);
       }
     } catch (e) {
-      console.error("Stop Audit Failed (Server):", e);
+      console.error("Termination failed:", e);
     }
-    
-    notify("Audit stopped.");
   };
 
   useEffect(() => {

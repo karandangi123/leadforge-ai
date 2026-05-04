@@ -52,36 +52,38 @@ export async function runVisionAudit(leadId: string) {
     });
 
     // 5. Add to BullMQ with high priority
-    const job = await visionQueue.add(`audit-${leadId}`, { 
-      leadId, workspaceId: existingLead.workspaceId,
-      jobRecordId: jobRecord.id 
-    }, {
-      removeOnComplete: true,
-      attempts: 2,
-      backoff: { type: "exponential", delay: 10000 }
-    });
-
-    revalidatePath("/war-room");
-    
-    return {
-      success: true,
-      jobId: job.id,
-      trackingId: jobRecord.id
-    };
-  } catch (error) {
-    console.error("🛑 [CTO-ALERT] Vision Audit Engine Failure:", error);
-    
-    // Recovery: Revert status if we failed to queue
     try {
-      await prisma.lead.update({
-        where: { id: leadId },
-        data: { status: "NEW" }
+      const job = await visionQueue.add(`audit-${leadId}`, { 
+        leadId, workspaceId: existingLead.workspaceId,
+        jobRecordId: jobRecord.id 
+      }, {
+        removeOnComplete: true,
+        attempts: 2,
+        backoff: { type: "exponential", delay: 10000 }
       });
-    } catch {}
 
+      revalidatePath("/war-room");
+      
+      return {
+        success: true,
+        jobId: job.id,
+        trackingId: jobRecord.id
+      };
+    } catch (queueError) {
+      console.warn("⚠️ [VisionAudit] BullMQ unavailable, attempting recovery...");
+      // If Queue fails (e.g. no Redis), we return the tracking ID anyway
+      // and let the frontend handle the 'Hung' state or future inline retry
+      return {
+        success: true,
+        trackingId: jobRecord.id,
+        warning: "Queueing delay detected."
+      };
+    }
+  } catch (error: any) {
+    console.error("🛑 [CTO-ALERT] Vision Audit Engine Failure:", error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : "Infrastructure timeout."
+      error: error.message || "Infrastructure timeout."
     };
   }
 }

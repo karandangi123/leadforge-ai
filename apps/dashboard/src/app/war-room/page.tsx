@@ -169,23 +169,35 @@ export default function WarRoom() {
   }, [isAuditing, trackingId, selectedLead?.id]);
 
   const stopAudit = async () => {
-    if (!trackingId || !selectedLead) return;
     const confirmStop = confirm("Are you sure you want to stop this forensic audit?");
     if (!confirmStop) return;
 
-    await cancelVisionAudit(trackingId, selectedLead.id);
+    // Aggressive UI reset
+    const tid = trackingId;
+    const lid = selectedLead?.id;
+
     setIsAuditing(false);
     setTrackingId(null);
+    setAuditProgress(0);
+    setAuditStep("");
     
-    // Crucial: Refresh local state so singleton policy allows new search
-    const data = await getWarRoomLeads();
-    setBriefs(data.length > 0 ? data : MOCK_BRIEFS);
-    if (selectedLead) {
-      const updated = data.find(l => l.id === selectedLead.id);
-      if (updated) handleSelectLead(updated);
+    try {
+      if (tid && lid) {
+        await cancelVisionAudit(tid, lid);
+      }
+      
+      // Refresh local state
+      const data = await getWarRoomLeads();
+      setBriefs(data.length > 0 ? data : MOCK_BRIEFS);
+      if (lid) {
+        const updated = data.find(l => l.id === lid);
+        if (updated) handleSelectLead(updated);
+      }
+    } catch (e) {
+      console.error("Stop Audit Failed (Server):", e);
     }
     
-    notify("Audit cancelled.");
+    notify("Audit stopped.");
   };
 
   useEffect(() => {

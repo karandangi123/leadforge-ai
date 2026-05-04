@@ -176,15 +176,15 @@ export async function exportLeadToHubSpot(leadId: string) {
     const lead = await prisma.lead.findUnique({
       where: { id: leadId },
       include: { 
-        audits: {
+        websiteAudits: {
           include: { findings: { orderBy: { overallSendability: 'desc' } } }
         }
       }
     });
 
-    if (!lead || lead.audits.length === 0) throw new Error("No audit data found.");
+    if (!lead || lead.websiteAudits.length === 0) throw new Error("No audit data found.");
 
-    const bestAudit = lead.audits[0];
+    const bestAudit = lead.websiteAudits[0];
     const bestFinding = bestAudit.findings[0];
 
     // Simulate HubSpot API call
@@ -221,7 +221,7 @@ export async function exportLeadsToCSV() {
     const leads = await prisma.lead.findMany({
       where: { status: "READY" },
       include: {
-        audits: {
+        websiteAudits: {
           where: { status: "SUCCEEDED" },
           orderBy: { createdAt: 'desc' },
           take: 1,
@@ -232,7 +232,7 @@ export async function exportLeadsToCSV() {
 
     const headers = ["Company", "Domain", "Primary Finding", "Outreach Hook", "Sendability Score", "Proof Link"];
     const rows = leads.map(l => {
-      const audit = l.audits[0];
+      const audit = l.websiteAudits[0];
       const finding = audit?.findings[0];
       return [
         l.company,

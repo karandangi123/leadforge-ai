@@ -35,12 +35,12 @@ async function runSuccessSimulation() {
 
     console.log(`✅ Forensic Capture Complete (${duration.toFixed(2)}s)`);
     console.log(`🧠 AI Reasoning (Refiner Pass 8.2): SUCCEEDED`);
-    console.log(`📊 UX Score: ${result.data.uxScore}/100`);
-
+    console.log(`📊 UX Score: ${result.uxScore}/100`);
+    
     // 4. VIDEO SUITE VERIFICATION
     console.log("\n🎬 Step 3: Verifying Video Outreach Suite (Phase 9)...");
-    console.log(`   - Script Generated: "${result.data.videoScript.substring(0, 50)}..."`);
-    console.log(`   - Video Synthesis Job: ${result.data.videoId ? 'ENGAGED' : 'SIMULATED (No API Key)'}`);
+    console.log(`   - Script Generated: "${result.videoScript.substring(0, 50)}..."`);
+    console.log(`   - Video Synthesis Job: ${result.videoUrl ? 'ENGAGED' : 'SIMULATED (No API Key)'}`);
 
     // 5. PORTAL VALIDATION
     const audit = await prisma.websiteAudit.findFirst({

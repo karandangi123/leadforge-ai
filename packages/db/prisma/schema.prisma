@@ -431,6 +431,10 @@ model WebsiteAudit {
   lead            Lead           @relation(fields: [leadId], references: [id], onDelete: Cascade)
   status          AgentRunStatus @default(QUEUED)
   overallScore    Int?
+  clarityScore    Int?
+  conversionScore Int?
+  trustScore      Int?
+  seoScore        Int?
   mobileScore     Int?           // New for Phase 8.3
   desktopScore    Int?           // New for Phase 8.3
   videoScript     String?        @db.Text

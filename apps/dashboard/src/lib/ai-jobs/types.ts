@@ -65,6 +65,7 @@ const jobLabels: Record<JobKind, string> = {
   DIALER_CALL: "Dialer Call",
   SEQUENCE_STEP: "Sequence Step",
   LEAD_ENRICHMENT: "Lead Enrichment",
+  SIGNAL_DISCOVERY: "Signal Discovery",
 };
 
 const queuedRunKeys: Record<JobKind, string> = {
@@ -82,6 +83,7 @@ const queuedRunKeys: Record<JobKind, string> = {
   DIALER_CALL: "call-queued",
   SEQUENCE_STEP: "sequence-queued",
   LEAD_ENRICHMENT: "enrich-queued",
+  SIGNAL_DISCOVERY: "signal-discovery-queued",
 };
 
 const completedRunKeys: Record<JobKind, string> = {
@@ -99,6 +101,7 @@ const completedRunKeys: Record<JobKind, string> = {
   DIALER_CALL: "call-completed",
   SEQUENCE_STEP: "sequence-step",
   LEAD_ENRICHMENT: "enriched",
+  SIGNAL_DISCOVERY: "signal-discovered",
 };
 
 export function getAsyncJobLabel(kind: JobKind) {

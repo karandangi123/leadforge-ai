@@ -278,8 +278,8 @@ export default function WarRoom() {
       }
     }).finally(() => setForensicLoading(false));
 
-    // 2. Fetch Synthesis if pending
-    if (lead.isPending) {
+    // 2. Fetch Synthesis if pending OR data is missing
+    if (lead.isPending || !lead.silverBulletHook || lead.silverBulletHook === "Contextual hook pending...") {
       setSynthesisLoading(true);
       getLeadSynthesis(lead.id).then(synthesis => {
         if (synthesis) {
@@ -368,17 +368,20 @@ export default function WarRoom() {
               }`}
             >
               <div className="flex justify-between items-start mb-1">
-                <span className="font-bold text-zinc-100">{brief.company}</span>
+                <div className="flex items-center gap-3">
+                  {!brief.id.startsWith('seed-') && (
+                    <button 
+                      onClick={(e) => handleDeleteLead(e, brief.id)}
+                      className="p-2 rounded-xl bg-red-500/10 text-red-500 border border-red-500/20 transition-all hover:bg-red-500 hover:text-white shadow-lg"
+                      title="Delete Search Site"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                  <span className="font-bold text-zinc-100">{brief.company}</span>
+                </div>
                 {brief.isPending && (
                   <span className="text-[9px] bg-amber-500/10 text-amber-500 px-2 py-0.5 rounded-full border border-amber-500/20 animate-pulse">Syncing...</span>
-                )}
-                {!brief.id.startsWith('seed-') && (
-                  <button 
-                    onClick={(e) => handleDeleteLead(e, brief.id)}
-                    className="p-1.5 rounded-lg bg-red-500/10 text-red-500 border border-red-500/20 opacity-0 group-hover:opacity-100 transition-all hover:bg-red-500 hover:text-white"
-                  >
-                    <Trash2 className="w-3 h-3" />
-                  </button>
                 )}
               </div>
               <div className="text-xs text-zinc-500 truncate mb-3">{brief.executiveSummary}</div>

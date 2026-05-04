@@ -684,7 +684,7 @@ export function createVisionAdapter(isDemo: boolean): EnrichmentAdapter {
         const visionResult = await VisionAgent.analyzeWebsite(input.website);
         
         const data: Partial<EnrichmentData> = {
-          description: `VISUAL INTELLIGENCE REPORT:\n${visionResult.data.summary}\n\nSignals Detected:\n${visionResult.data.signals.map(s => `- [${s.kind}] (${s.severity}) ${s.finding} -> Rec: ${s.recommendation}`).join("\n")}`,
+          description: `VISUAL INTELLIGENCE REPORT:\n${visionResult.summary}\n\nSignals Detected:\n${visionResult.signals.map((s: any) => `- [${s.kind}] (${s.severity}) ${s.finding} -> Rec: ${s.recommendation}`).join("\n")}`,
         };
 
         const fieldsEnriched = ["description"];

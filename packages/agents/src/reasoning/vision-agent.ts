@@ -54,6 +54,11 @@ export class VisionAgent {
 
     const prisma = getPrisma();
     const lead = await prisma.lead.findUnique({ where: { id: leadId } });
+    if (!lead || !lead.website) throw new Error("Lead data unreachable.");
+    
+    const url = lead.website.startsWith("http") ? lead.website : `https://${lead.website}`;
+    const { desktop, mobile } = await WebCrawler.captureForensicPair(url);
+    if (!desktop.screenshotUrl || !mobile.screenshotUrl) throw new Error("Visual capture failed.");
 
     const [desktopUrl, mobileUrl] = await Promise.all([
       StorageProvider.uploadScreenshot(leadId, desktop.screenshotUrl, "home_desktop"),

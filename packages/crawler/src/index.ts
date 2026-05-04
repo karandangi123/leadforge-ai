@@ -70,8 +70,8 @@ export class WebCrawler {
       await page.waitForLoadState("networkidle", { timeout: 5000 }).catch(() => {});
       
       const title = await page.title();
-      const metaDescription = await page.$eval('meta[name="description"]', el => (el as HTMLMetaElement).content).catch(() => "");
-      const content = await page.$eval("body", el => el.innerText);
+      const metaDescription = await page.$eval('meta[name="description"]', (el: any) => (el as HTMLMetaElement).content).catch(() => "");
+      const content = await page.$eval("body", (el: any) => el.innerText);
 
       let screenshotUrl: string | undefined;
       if (options.screenshot) {
@@ -100,7 +100,8 @@ export class WebCrawler {
       // Try to use playwright-aws-lambda for production environment
       const playwright = await import("playwright-aws-lambda").catch(() => null);
       if (playwright) {
-        return await playwright.launchBrowser({
+        const chromium = playwright.default || playwright;
+        return await (chromium as any).launchChromium({
           headless: true,
           args: ['--no-sandbox', '--disable-setuid-sandbox']
         });

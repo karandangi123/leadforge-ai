@@ -21,7 +21,7 @@ import {
   Radar
 } from "lucide-react";
 import { getWarRoomLeads, getLeadForensicData } from "@/app/actions/war-room";
-import { runVisionAudit, getVisionJobStatus, fastAudit } from "@/app/actions/vision-audit";
+import { runVisionAudit, getVisionJobStatus, fastAudit, cancelVisionAudit } from "@/app/actions/vision-audit";
 import { AnnotatedScreenshot } from "@/components/war-room/annotated-screenshot";
 
 // Mock data for initial rendering
@@ -46,6 +46,7 @@ export default function WarRoom() {
   const [auditProgress, setAuditProgress] = useState(0);
   const [auditStep, setAuditStep] = useState("");
   const [isAuditing, setIsAuditing] = useState(false);
+  const [timeLeft, setTimeLeft] = useState(45);
   const [trackingId, setTrackingId] = useState<string | null>(null);
   const [fastUrl, setFastUrl] = useState("");
   const [isIngesting, setIsIngesting] = useState(false);
@@ -63,6 +64,7 @@ export default function WarRoom() {
 
     setIsAuditing(true);
     setAuditProgress(5);
+    setTimeLeft(45);
     setAuditStep("Connecting to LeadForge Infrastructure...");
     
     try {
@@ -108,24 +110,26 @@ export default function WarRoom() {
   // Real-time Job Tracking Loop
   useEffect(() => {
     let pollInterval: NodeJS.Timeout;
+    let timerInterval: NodeJS.Timeout;
 
     if (isAuditing && trackingId) {
+      // Countdown timer
+      timerInterval = setInterval(() => {
+        setTimeLeft(prev => Math.max(0, prev - 1));
+      }, 1000);
+
       pollInterval = setInterval(async () => {
         const statusRes = await getVisionJobStatus(trackingId);
         
-        if (statusRes.status === "COMPLETED") {
-          setIsAuditing(false);
-          setTrackingId(null);
+        if (statusRes.status === "COMPLETED" || statusRes.status === "SUCCEEDED") {
+          cleanup();
           const data = await getWarRoomLeads();
           setBriefs(data.length > 0 ? data : MOCK_BRIEFS);
           const updated = data.find(l => l.id === selectedLead?.id);
-          if (updated) setSelectedLead(updated);
-          clearInterval(pollInterval);
+          if (updated) handleSelectLead(updated);
         } else if (statusRes.status === "FAILED") {
-          setIsAuditing(false);
-          setTrackingId(null);
+          cleanup();
           alert("Forensic audit failed: Internal timeout.");
-          clearInterval(pollInterval);
         } else if (statusRes.progress) {
           setAuditProgress(statusRes.progress);
           setAuditStep(statusRes.step || "Processing...");
@@ -133,8 +137,29 @@ export default function WarRoom() {
       }, 2000);
     }
 
-    return () => clearInterval(pollInterval);
+    const cleanup = () => {
+      setIsAuditing(false);
+      setTrackingId(null);
+      clearInterval(pollInterval);
+      clearInterval(timerInterval);
+    };
+
+    return () => {
+      clearInterval(pollInterval);
+      clearInterval(timerInterval);
+    };
   }, [isAuditing, trackingId, selectedLead?.id]);
+
+  const stopAudit = async () => {
+    if (!trackingId || !selectedLead) return;
+    const confirmStop = confirm("Are you sure you want to stop this forensic audit?");
+    if (!confirmStop) return;
+
+    await cancelVisionAudit(trackingId, selectedLead.id);
+    setIsAuditing(false);
+    setTrackingId(null);
+    notify("Audit cancelled.");
+  };
 
   useEffect(() => {
     async function loadData() {
@@ -328,18 +353,34 @@ export default function WarRoom() {
 
               <div className="grid grid-cols-2 gap-8 relative">
                 {(isAuditing || selectedLead.status === 'AUDIT') && (
-                  <div className="absolute inset-0 bg-black/60 backdrop-blur-3xl z-50 flex flex-col items-center justify-center rounded-[3rem] border border-white/10 shadow-2xl">
+                  <div className="absolute inset-0 bg-black/80 backdrop-blur-3xl z-50 flex flex-col items-center justify-center rounded-[3rem] border border-white/10 shadow-2xl p-10 text-center">
                     <div className="w-24 h-24 bg-zinc-900 rounded-[2rem] flex items-center justify-center border border-amber-500/50 shadow-[0_0_50px_rgba(245,158,11,0.2)] mb-8 relative overflow-hidden">
                       <Radar className="w-10 h-10 text-amber-500 animate-spin" />
                     </div>
-                    <p className="text-2xl font-black text-white tracking-tighter mb-2">{auditStep}</p>
-                    <div className="w-64 h-1.5 bg-zinc-800 rounded-full overflow-hidden mt-4">
+                    
+                    <div className="mb-8">
+                      <p className="text-3xl font-black text-white tracking-tighter mb-2">{auditStep}</p>
+                      <div className="flex items-center justify-center gap-2 text-zinc-500">
+                        <RefreshCw className="w-3 h-3 animate-spin" />
+                        <span className="text-[10px] font-bold uppercase tracking-widest">Estimated Completion: {timeLeft}s remaining</span>
+                      </div>
+                    </div>
+
+                    <div className="w-64 h-2 bg-zinc-800 rounded-full overflow-hidden mb-12">
                       <motion.div 
                         initial={{ width: 0 }}
                         animate={{ width: `${auditProgress}%` }}
                         className="h-full bg-gradient-to-r from-amber-500 to-orange-500"
                       />
                     </div>
+
+                    <button 
+                      onClick={stopAudit}
+                      className="group flex items-center gap-3 px-8 py-4 rounded-2xl bg-zinc-900 border border-white/5 hover:border-red-500/50 transition-all"
+                    >
+                      <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                      <span className="text-[10px] font-black uppercase tracking-widest text-zinc-400 group-hover:text-red-500">Terminate Research Session</span>
+                    </button>
                   </div>
                 )}
 

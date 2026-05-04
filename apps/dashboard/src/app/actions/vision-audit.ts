@@ -151,6 +151,39 @@ export async function fastAudit(url: string) {
     };
   } catch (error: any) {
     console.error("🛑 [FastAudit] Failed:", error);
-    return { success: false, error: error.message || "Ingest failed." };
+    return {
+      success: false,
+      error: error.message || "Ingest failed."
+    };
+  }
+}
+
+/**
+ * Stop/Cancel an ongoing audit
+ */
+export async function cancelVisionAudit(trackingId: string, leadId: string) {
+  const prisma = getPrisma();
+  
+  try {
+    await prisma.$transaction([
+      prisma.asyncJob.update({
+        where: { id: trackingId },
+        data: { 
+          status: "CANCELLED",
+          events: {
+            create: { status: "CANCELLED", message: "Audit stopped by user." }
+          }
+        }
+      }),
+      prisma.lead.update({
+        where: { id: leadId },
+        data: { status: "NEW" }
+      })
+    ]);
+
+    revalidatePath("/war-room");
+    return { success: true };
+  } catch (error) {
+    return { success: false };
   }
 }

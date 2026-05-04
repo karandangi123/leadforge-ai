@@ -14,6 +14,15 @@
   --accent-blue: #3b82f6;
   --soft-cyan: #e6fffb;
   --accent-warning: #f59e0b;
+  
+  /* Forensic Intelligence Redesign Tokens */
+  --obsidian: #0A0A0B;
+  --zircon: #121214;
+  --steel: #1C1C1F;
+  --leadforge-blue: #3B82F6;
+  --emerald: #10B981;
+  --crimson: #EF4444;
+  --mist: #A1A1AA;
 }
 
 @theme inline {
@@ -30,6 +39,46 @@
   --color-accent-blue: var(--accent-blue);
   --color-soft-cyan: var(--soft-cyan);
   --color-accent-warning: var(--accent-warning);
+  
+  --color-obsidian: var(--obsidian);
+  --color-zircon: var(--zircon);
+  --color-steel: var(--steel);
+  --color-leadforge-blue: var(--leadforge-blue);
+  --color-emerald: var(--emerald);
+  --color-crimson: var(--crimson);
+  --color-mist: var(--mist);
+}
+
+/* Forensic Center Utilities */
+.forensic-glass {
+  background: rgba(18, 18, 20, 0.7);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.command-shadow {
+  box-shadow: 0 0 100px rgba(0, 0, 0, 0.8), 0 0 20px rgba(0, 0, 0, 0.5);
+}
+
+.signal-pulse {
+  position: relative;
+}
+
+.signal-pulse::after {
+  content: "";
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  border: 2px solid var(--leadforge-blue);
+  opacity: 0;
+  animation: pulse 3s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+@keyframes pulse {
+  0% { transform: scale(1); opacity: 0; }
+  50% { opacity: 0.5; }
+  100% { transform: scale(1.5); opacity: 0; }
 }
 
 body {

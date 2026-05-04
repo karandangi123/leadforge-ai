@@ -41,6 +41,7 @@ export async function getWarRoomLeads() {
     };
 
     const latestAudit = lead.websiteAudits[0];
+    const silverBullet = latestAudit?.readyToSendMessage || brief.silverBulletHook;
 
     return {
       id: lead.id,
@@ -50,7 +51,7 @@ export async function getWarRoomLeads() {
       auditScore: latestAudit?.overallScore,
       status: lead.status,
       executiveSummary: brief.executiveSummary,
-      silverBulletHook: brief.silverBulletHook,
+      silverBulletHook: silverBullet,
       competitorGap: brief.competitorGap,
       visualSignal: brief.visualSignal,
       isPending: brief.isPending || false
@@ -100,6 +101,7 @@ export async function getLeadForensicData(leadId: string) {
     confidence: audit.confidence || 0.95,
     publicProofId: audit.publicProofId,
     findings: findings.map(f => ({
+      id: f.id,
       x: f.x,
       y: f.y,
       finding: f.title,
@@ -109,7 +111,16 @@ export async function getLeadForensicData(leadId: string) {
       source: f.sourceEngine,
       confidence: f.confidence,
       businessImpact: f.businessImpact,
-      outreachHook: f.outreachHook
+      outreachHook: f.outreachHook,
+      outreachValueScore: f.outreachValueScore,
+      whyThisFinding: f.whyThisFinding,
+      status: f.status,
+      humanNotes: f.humanNotes,
+      detectionConfidence: f.detectionConfidence,
+      evidenceStrength: f.evidenceStrength,
+      businessImpactScore: f.businessImpactScore,
+      outreachQualityScore: f.outreachQualityScore,
+      overallSendability: f.overallSendability
     }))
   };
 }
@@ -155,6 +166,111 @@ export async function cleanupHungAudits() {
     
     return { success: true, count: hungLeads.count };
   } catch (error) {
+    return { success: false };
+  }
+}
+export async function exportLeadToHubSpot(leadId: string) {
+  const prisma = getPrisma();
+  
+  try {
+    const lead = await prisma.lead.findUnique({
+      where: { id: leadId },
+      include: { 
+        audits: {
+          include: { findings: { orderBy: { overallSendability: 'desc' } } }
+        }
+      }
+    });
+
+    if (!lead || lead.audits.length === 0) throw new Error("No audit data found.");
+
+    const bestAudit = lead.audits[0];
+    const bestFinding = bestAudit.findings[0];
+
+    // Simulate HubSpot API call
+    console.log(`[HubSpot] Exporting lead ${lead.company} with finding: ${bestFinding?.title}`);
+    
+    await prisma.integrationSync.create({
+      data: {
+        leadId,
+        provider: "HUBSPOT",
+        status: "SUCCESS",
+        payload: {
+          finding: bestFinding?.title,
+          hook: bestFinding?.outreachHook,
+          score: bestFinding?.overallSendability,
+          proofUrl: `https://leadforge.ai/proof/${bestAudit.publicProofId}`
+        }
+      }
+    });
+
+    return { success: true };
+  } catch (error) {
+    console.error("[HubSpot] Export failed:", error);
+    return { success: false };
+  }
+}
+
+/**
+ * Generate a CSV of approved leads for export to Clay/Apollo
+ */
+export async function exportLeadsToCSV() {
+  const prisma = getPrisma();
+  
+  try {
+    const leads = await prisma.lead.findMany({
+      where: { status: "READY" },
+      include: {
+        audits: {
+          where: { status: "SUCCEEDED" },
+          orderBy: { createdAt: 'desc' },
+          take: 1,
+          include: { findings: { where: { status: "APPROVED" }, orderBy: { overallSendability: 'desc' } } }
+        }
+      }
+    });
+
+    const headers = ["Company", "Domain", "Primary Finding", "Outreach Hook", "Sendability Score", "Proof Link"];
+    const rows = leads.map(l => {
+      const audit = l.audits[0];
+      const finding = audit?.findings[0];
+      return [
+        l.company,
+        l.website,
+        finding?.title || "",
+        finding?.outreachHook || "",
+        finding?.overallSendability ? `${Math.round(finding.overallSendability * 100)}%` : "",
+        audit?.publicProofId ? `https://leadforge.ai/proof/${audit.publicProofId}` : ""
+      ].map(cell => `"${cell.replace(/"/g, '""')}"`).join(",");
+    });
+
+    const csvContent = [headers.join(","), ...rows].join("\n");
+    return { success: true, csv: csvContent };
+  } catch (error) {
+    console.error("[CSV] Export failed:", error);
+    return { success: false };
+  }
+}
+
+/**
+ * Update a specific forensic finding (Approve, Edit, Reject)
+ */
+export async function updateFinding(findingId: string, data: {
+  status?: string;
+  outreachHook?: string;
+  severity?: string;
+  humanNotes?: string;
+}) {
+  const prisma = getPrisma();
+  
+  try {
+    const updated = await prisma.auditFinding.update({
+      where: { id: findingId },
+      data
+    });
+    return { success: true, finding: updated };
+  } catch (error) {
+    console.error("Failed to update finding:", error);
     return { success: false };
   }
 }

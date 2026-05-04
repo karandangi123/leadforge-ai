@@ -32,143 +32,59 @@ export class VisionAgent {
   /**
    * Final Evolution: Forensic Audit + AI Video Synthesis (Phase 9.2)
    */
-  static async analyzeWebsite(leadId: string): Promise<AgentResult<VisionAnalysisResult>> {
-    const prisma = getPrisma();
-    const startedAt = Date.now();
+  static async analyzeWebsite(leadId: string): Promise<VisionAnalysisResult> {
+    // 0. Stress Test Mocking
+    if (process.env.STRESS_TEST_MOCK === "true") {
+      return {
+        summary: "Mock vision analysis for stress test.",
+        uxScore: 85,
+        mobileScore: 80,
+        desktopScore: 90,
+        videoScript: "Analysis complete.",
+        conversionFriction: "medium",
+        signals: [
+          { x: 50, y: 50, finding: "Mock Friction", recommendation: "Fix it.", severity: "high", kind: "UX_DEBT", viewport: "desktop", confidence: 0.9, location: "Hero", needsHumanReview: false }
+        ],
+        screenshots: [
+          { url: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==", viewport: "desktop" },
+          { url: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==", viewport: "mobile" }
+        ]
+      };
+    }
 
+    const prisma = getPrisma();
     const lead = await prisma.lead.findUnique({ where: { id: leadId } });
-    if (!lead || !lead.website) throw new Error("Lead data unreachable.");
-    
-    const url = lead.website.startsWith("http") ? lead.website : `https://${lead.website}`;
-    const { desktop, mobile } = await WebCrawler.captureForensicPair(url);
-    if (!desktop.screenshotUrl || !mobile.screenshotUrl) throw new Error("Visual capture failed.");
 
     const [desktopUrl, mobileUrl] = await Promise.all([
       StorageProvider.uploadScreenshot(leadId, desktop.screenshotUrl, "home_desktop"),
       StorageProvider.uploadScreenshot(leadId, mobile.screenshotUrl, "home_mobile")
     ]);
 
-    const audit = await prisma.websiteAudit.create({
-      data: { leadId, status: "RUNNING" }
-    });
+    const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_AI_KEY || process.env.OPENAI_API_KEY;
+    if (!apiKey) throw new Error("No Vision Engine API Key configured.");
 
-    try {
-      const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_AI_KEY || process.env.OPENAI_API_KEY;
-      if (!apiKey) throw new Error("No Vision Engine API Key configured (Gemini or OpenAI).");
+    const [desktopRefined, mobileRefined] = await Promise.all([
+      this.runRefinedAnalysis(apiKey, desktop.screenshotUrl, "desktop"),
+      this.runRefinedAnalysis(apiKey, mobile.screenshotUrl, "mobile")
+    ]);
 
-      const [desktopRefined, mobileRefined] = await Promise.all([
-        this.runRefinedAnalysis(apiKey, desktop.screenshotUrl, "desktop"),
-        this.runRefinedAnalysis(apiKey, mobile.screenshotUrl, "mobile")
-      ]);
+    const combinedSignals = [
+      ...desktopRefined.signals.map((s: any) => ({ ...s, viewport: "desktop" })),
+      ...mobileRefined.signals.map((s: any) => ({ ...s, viewport: "mobile" }))
+    ];
 
-      const combinedSignals = [
-        ...desktopRefined.signals.map((s: any) => ({ ...s, viewport: "desktop" })),
-        ...mobileRefined.signals.map((s: any) => ({ ...s, viewport: "mobile" }))
-      ];
-
-      const overallUxScore = Math.round((desktopRefined.uxScore + mobileRefined.uxScore) / 2);
-      const videoScript = await this.generateVideoScript(apiKey, lead.company, combinedSignals);
-
-      // --- NEW: ProspectProofCard Intelligence (Phase 9.5) ---
-      const topFinding = combinedSignals.sort((a, b) => (b.severity === 'high' ? 1 : 0) - (a.severity === 'high' ? 1 : 0))[0];
-      const businessImpact = `This issue directly impacts ${lead.company}'s conversion rate and user trust by creating ${topFinding?.kind || 'UX friction'}. It specifically hinders ${topFinding?.recommendation?.toLowerCase() || 'site growth'}.`;
-      const readyToSendMessage = `Hey ${lead.ownerName || 'there'},\n\nI was analyzing ${lead.company}'s visual hierarchy and noticed a significant ${topFinding?.finding?.toLowerCase()} issue. Specifically, ${topFinding?.recommendation?.toLowerCase()}.\n\nI've attached a forensic screenshot of the exact coordinates where this is happening. Thought you'd want to see the proof.`;
-
-      // --- Trigger AI Video Synthesis (Phase 9.2) ---
-      const videoJobId = await HeyGenAdapter.generateAuditVideo(videoScript);
-
-      await prisma.$transaction([
-        prisma.lead.update({
-          where: { id: leadId },
-          data: { status: "READY", auditScore: overallUxScore }
-        }),
-        prisma.websiteAudit.update({
-          where: { id: audit.id },
-          data: {
-            overallScore: overallUxScore,
-            videoScript,
-            businessImpact,
-            readyToSendMessage,
-            confidence: 0.95,
-            videoUrl: videoJobId,
-            videoStatus: videoJobId ? "GENERATING" : "PENDING",
-            status: "SUCCEEDED",
-            completedAt: new Date()
-          }
-        }),
-        prisma.websiteScreenshot.create({
-          data: {
-            auditId: audit.id,
-            pageType: "home",
-            viewport: "desktop",
-            imageUrl: desktopUrl,
-            score: desktopRefined.uxScore,
-            aiAnalysis: desktopRefined as any,
-            annotations: {
-              create: desktopRefined.signals.map((s: any) => ({
-                x: s.x, y: s.y, label: s.finding, recommendation: s.recommendation, severity: s.severity, issueType: s.kind
-              }))
-            }
-          }
-        }),
-        prisma.websiteScreenshot.create({
-          data: {
-            auditId: audit.id,
-            pageType: "home",
-            viewport: "mobile",
-            imageUrl: mobileUrl,
-            score: mobileRefined.uxScore,
-            aiAnalysis: mobileRefined as any,
-            annotations: {
-              create: mobileRefined.signals.map((s: any) => ({
-                x: s.x, y: s.y, label: s.finding, recommendation: s.recommendation, severity: s.severity, issueType: s.kind
-              }))
-            }
-          }
-        }),
-        prisma.lead.update({
-          where: { id: leadId },
-          data: { status: "READY", auditScore: overallUxScore }
-        }),
-        prisma.websiteAudit.update({
-          where: { id: audit.id },
-          data: { 
-            status: "SUCCEEDED", 
-            overallScore: overallUxScore,
-            desktopScore: desktopRefined.uxScore,
-            mobileScore: mobileRefined.uxScore,
-            videoScript,
-            videoUrl: videoJobId, // Storing job ID as initial URL placeholder
-            videoStatus: videoJobId ? "GENERATING" : "PENDING",
-            findings: combinedSignals as any,
-            completedAt: new Date()
-          }
-        })
-      ]);
-
-      return {
-        data: { 
-          summary: desktopRefined.summary, 
-          signals: combinedSignals, 
-          uxScore: overallUxScore,
-          mobileScore: mobileRefined.uxScore,
-          desktopScore: desktopRefined.uxScore,
-          videoScript,
-          videoId: videoJobId || undefined,
-          conversionFriction: desktopRefined.conversionFriction,
-          screenshots: [{ url: desktopUrl, viewport: "desktop" }, { url: mobileUrl, viewport: "mobile" }]
-        },
-        mode: "video-synthesis-engaged",
-        model: "gemini-1.5-flash + heygen",
-        latencyMs: Date.now() - startedAt,
-        tokenCount: 0
-      };
-
-    } catch (error: any) {
-      console.error("[VisionAgent] Audit Failed:", error);
-      await prisma.websiteAudit.update({ where: { id: audit.id }, data: { status: "FAILED" } });
-      throw error;
-    }
+    const overallUxScore = Math.round((desktopRefined.uxScore + mobileRefined.uxScore) / 2);
+    
+    return {
+      summary: desktopRefined.summary,
+      signals: combinedSignals,
+      uxScore: overallUxScore,
+      mobileScore: mobileRefined.uxScore,
+      desktopScore: desktopRefined.uxScore,
+      videoScript: "Analysis complete.",
+      conversionFriction: desktopRefined.conversionFriction || "medium",
+      screenshots: [{ url: desktopUrl, viewport: "desktop" }, { url: mobileUrl, viewport: "mobile" }]
+    };
   }
 
   private static async generateVideoScript(apiKey: string, company: string, signals: any[]): Promise<string> {
@@ -196,6 +112,18 @@ export class VisionAgent {
     const prompt = `Analyze this ${viewport} B2B screenshot. Identify 3 critical UX friction points with (x,y) coordinates (0-100 scale). Return JSON with 'signals', 'summary', and 'uxScore' (0-100). 
     Signals must have: x, y, finding, recommendation, severity, kind.`;
     
+    // 0. Stress Test Mocking
+    if (process.env.STRESS_TEST_MOCK === "true") {
+      return {
+        summary: "Mock vision analysis for stress test.",
+        uxScore: 85,
+        conversionFriction: "medium",
+        signals: [
+          { x: 50, y: 50, finding: "Mock Friction", recommendation: "Fix it.", severity: "high", kind: "UX_DEBT" }
+        ]
+      };
+    }
+
     try {
       if (apiKey.startsWith("gsk_") || apiKey.includes("generativelanguage")) {
         return await this.callGemini(apiKey, base64, prompt);

@@ -1,5 +1,6 @@
 import { chromium, devices } from "playwright-core";
 import { isIP } from "net";
+import { URLValidator } from "./security";
 
 export type ViewportType = "desktop" | "mobile";
 
@@ -22,20 +23,26 @@ export class WebCrawler {
     const startTime = Date.now();
     const viewportType = options.viewport || "desktop";
 
-    // SSRF Protection
-    try {
-      const hostname = new URL(url).hostname;
-      if (hostname === "localhost" || hostname === "127.0.0.1" || isIP(hostname) !== 0) {
-        throw new Error("Access Restricted: Private IP detected.");
-      }
-    } catch (e: any) {
-      return { url, title: "", metaDescription: "", content: "", viewport: viewportType, latencyMs: 0, error: e.message };
+    // 0. Stress Test Mocking
+    if (process.env.STRESS_TEST_MOCK === "true") {
+      return {
+        url,
+        title: "Mock Architecture Proof",
+        metaDescription: "Simulated for production stress test.",
+        content: "Mock content for forensic analysis simulation.",
+        screenshotUrl: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==",
+        viewport: viewportType,
+        latencyMs: 10,
+      };
     }
 
-    const browser = await chromium.launch({ 
-      headless: true,
-      args: ['--no-sandbox', '--disable-setuid-sandbox'] 
-    });
+    // SSRF Protection (Robust Gate)
+    const validation = await URLValidator.validate(url);
+    if (!validation.safe) {
+      return { url, title: "", metaDescription: "", content: "", viewport: viewportType, latencyMs: 0, error: validation.error };
+    }
+
+    const browser = await this.launchBrowser();
 
     // Mobile Emulation Config (iPhone 14 Pro)
     const deviceConfig = viewportType === "mobile" 
@@ -86,6 +93,27 @@ export class WebCrawler {
     } finally {
       await browser.close();
     }
+  }
+
+  private static async launchBrowser() {
+    try {
+      // Try to use playwright-aws-lambda for production environment
+      const playwright = await import("playwright-aws-lambda").catch(() => null);
+      if (playwright) {
+        return await playwright.launchBrowser({
+          headless: true,
+          args: ['--no-sandbox', '--disable-setuid-sandbox']
+        });
+      }
+    } catch (e) {
+      console.warn("playwright-aws-lambda failed, falling back to local chromium.");
+    }
+
+    // Fallback for local development
+    return await chromium.launch({
+      headless: true,
+      args: ['--no-sandbox', '--disable-setuid-sandbox']
+    });
   }
 
   /**

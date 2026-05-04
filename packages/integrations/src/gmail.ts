@@ -1,5 +1,6 @@
 import { randomBytes } from "node:crypto";
 import { google } from "googleapis";
+import { TokenCrypto } from "./crypto";
 
 const SCOPES = [
   "https://www.googleapis.com/auth/gmail.compose",
@@ -263,9 +264,12 @@ function getGoogleOAuthClient(redirectUri: string) {
 async function getAuthorizedGmailClient(connection: StoredGoogleConnection) {
   const redirectUri = process.env.GOOGLE_OAUTH_REDIRECT_URI ?? "http://localhost:3000/api/integrations/google/callback";
   const oauth2 = getGoogleOAuthClient(redirectUri);
+  const accessToken = connection.accessToken?.includes(":") ? TokenCrypto.decrypt(connection.accessToken) : connection.accessToken;
+  const refreshToken = connection.refreshToken?.includes(":") ? TokenCrypto.decrypt(connection.refreshToken) : connection.refreshToken;
+
   oauth2.setCredentials({
-    access_token: connection.accessToken ?? undefined,
-    refresh_token: connection.refreshToken ?? undefined,
+    access_token: accessToken ?? undefined,
+    refresh_token: refreshToken ?? undefined,
     expiry_date: connection.expiresAt?.getTime(),
     token_type: connection.tokenType ?? undefined,
     scope: connection.scope ?? undefined,

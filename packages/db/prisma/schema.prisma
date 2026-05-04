@@ -430,28 +430,49 @@ model WebsiteAudit {
   leadId          String
   lead            Lead           @relation(fields: [leadId], references: [id], onDelete: Cascade)
   status          AgentRunStatus @default(QUEUED)
+  progress        Int            @default(0)
+  inputUrl        String?        // Original URL input
+  normalizedDomain String?       // Cleaned domain (e.g. acme.com)
+  companyName     String?
   overallScore    Int?
   clarityScore    Int?
   conversionScore Int?
   trustScore      Int?
   seoScore        Int?
   speedScore      Int?
-  mobileScore     Int?           // New for Phase 8.3
-  desktopScore    Int?           // New for Phase 8.3
+  mobileScore     Int?
+  desktopScore    Int?
   videoScript     String?        @db.Text
-  videoUrl        String?        // New for Phase 9.2
-  videoStatus     String?        @default("PENDING") // PENDING, GENERATING, COMPLETED, FAILED
+  videoUrl        String?
+  videoStatus     String?        @default("PENDING")
   businessImpact  String?        @db.Text
   readyToSendMessage String?     @db.Text
+  errorMessage    String?        @db.Text    // Critical for Failure 8
+  partialFailure  Boolean        @default(false)
+  engineStatus    Json           @default("{}") // Store individual engine success/fail
   confidence      Float?
-  proofUrl        String?        // Public link to the proof package
-  publicProofId   String?        @unique @default(cuid()) // For portable sharing
+  proofUrl        String?        
+  publicProofId   String?        @unique @default(cuid())
   findings        AuditFinding[]
+  assets          AuditAsset[]   // Refined from WebsiteScreenshot
   screenshots     WebsiteScreenshot[]
   createdAt       DateTime       @default(now())
   completedAt     DateTime?
 
   @@index([leadId, createdAt])
+}
+
+model AuditAsset {
+  id              String         @id @default(cuid())
+  auditId         String
+  audit           WebsiteAudit   @relation(fields: [auditId], references: [id], onDelete: Cascade)
+  type            String         // desktop, mobile, annotated, proof_card, report_json
+  url             String         // CDN URL
+  storageKey      String?        // R2/S3 key
+  metadata        Json           @default("{}")
+  createdAt       DateTime       @default(now())
+
+  @@index([auditId, type])
 }
 
 model WebsiteScreenshot {
@@ -479,10 +500,18 @@ model AuditFinding {
   businessImpact  String            @db.Text
   fixSuggestion   String?           @db.Text
   outreachHook    String?           @db.Text
-  status          String            @default("APPROVED") // approved, needs_review, rejected
-  x               Float?            // Visual coordinates if applicable
+  outreachValueScore Float?          @default(0)
+  detectionConfidence Float?       @default(0)
+  evidenceStrength   Float?       @default(0)
+  businessImpactScore Float?      @default(0)
+  outreachQualityScore Float?     @default(0)
+  overallSendability   Float?     @default(0)
+  whyThisFinding  String?           @db.Text
+  humanNotes      String?           @db.Text
+  status          String            @default("NEEDS_REVIEW")
+  x               Float?            
   y               Float?
-  viewport        String?           // desktop, mobile
+  viewport        String?           
   createdAt       DateTime          @default(now())
 }
 

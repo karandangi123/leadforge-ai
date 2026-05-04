@@ -65,22 +65,30 @@ export async function bulkUpdateLeads(leadIds: string[], data: any) {
 }
 
 /**
- * Move a lead to a new stage (e.g. via Drag and Drop on the Pipeline board)
+ * Move a lead to a new stage (Supports both direct call and Form Action)
  */
-export async function moveLeadStage(leadId: string, status: any) {
+export async function moveLeadStage(leadIdOrFormData: string | FormData, status?: any) {
   const prisma = getPrisma();
+  let id: string;
+  let newStatus: any;
+
+  if (leadIdOrFormData instanceof FormData) {
+    id = leadIdOrFormData.get("leadId") as string;
+    newStatus = leadIdOrFormData.get("status") as any;
+  } else {
+    id = leadIdOrFormData;
+    newStatus = status;
+  }
   
   try {
     await prisma.lead.update({
-      where: { id: leadId },
-      data: { status }
+      where: { id: id },
+      data: { status: newStatus }
     });
     revalidatePath("/dashboard");
     revalidatePath("/leads");
-     
   } catch (error) {
     console.error("[LeadsAction] Move lead stage failed", error);
-     
   }
 }
 

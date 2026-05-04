@@ -38,10 +38,10 @@ export async function updateLeadStatus(leadId: string, status: any) {
       data: { status }
     });
     revalidatePath("/leads");
-    return { success: true };
+     
   } catch (error) {
     console.error("[LeadsAction] Failed to update lead status", error);
-    return { success: false };
+     
   }
 }
 
@@ -57,10 +57,10 @@ export async function bulkUpdateLeads(leadIds: string[], data: any) {
       data
     });
     revalidatePath("/leads");
-    return { success: true };
+     
   } catch (error) {
     console.error("[LeadsAction] Bulk update failed", error);
-    return { success: false };
+     
   }
 }
 
@@ -77,10 +77,10 @@ export async function moveLeadStage(leadId: string, status: any) {
     });
     revalidatePath("/dashboard");
     revalidatePath("/leads");
-    return { success: true };
+     
   } catch (error) {
     console.error("[LeadsAction] Move lead stage failed", error);
-    return { success: false };
+     
   }
 }
 
@@ -104,7 +104,7 @@ export async function addLead(data: any) {
     return { success: true, lead };
   } catch (error) {
     console.error("[LeadsAction] Add lead failed", error);
-    return { success: false };
+     
   }
 }
 
@@ -129,7 +129,7 @@ export async function createLeadFromInsight(data: any) {
     return { success: true, leadId: lead.id };
   } catch (error) {
     console.error("[LeadsAction] Create from insight failed", error);
-    return { success: false };
+     
   }
 }
 
@@ -186,10 +186,10 @@ export async function recordLeadOutcome(formData: FormData) {
     });
     revalidatePath(`/leads/${leadId}`);
     revalidatePath("/dashboard");
-    return { success: true };
+     
   } catch (error) {
     console.error("[LeadsAction] Failed to record outcome", error);
-    return { success: false };
+     
   }
 }
 
@@ -222,10 +222,10 @@ export async function updateLeadMetadata(formData: FormData) {
     revalidatePath(`/leads/${leadId}`);
     revalidatePath("/leads");
     revalidatePath("/dashboard");
-    return { success: true };
+     
   } catch (error) {
     console.error("[LeadsAction] Failed to update metadata", error);
-    return { success: false };
+     
   }
 }
 
@@ -243,9 +243,9 @@ export async function setLeadHumanNextAction(formData: FormData) {
       data: { humanNextAction }
     });
     revalidatePath(`/leads/${leadId}`);
-    return { success: true };
+     
   } catch (error) {
     console.error("[LeadsAction] Failed to set human action", error);
-    return { success: false };
+     
   }
 }

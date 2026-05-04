@@ -88,10 +88,10 @@ export async function createRealGmailDraft(formData: FormData) {
     });
     
     revalidatePath(`/leads/${leadId}`);
-    return { success: true };
+     
   } catch (error) {
     console.error("[IntegrationsAction] Failed to queue Gmail draft", error);
-    return { success: false };
+     
   }
 }
 

@@ -99,3 +99,48 @@ export async function getLeadForensicData(leadId: string) {
     }))
   };
 }
+
+/**
+ * Delete a lead and all associated audit data from the War Room
+ */
+export async function deleteWarRoomLead(leadId: string) {
+  const prisma = getPrisma();
+  
+  try {
+    await prisma.$transaction([
+      prisma.websiteAudit.deleteMany({ where: { leadId } }),
+      prisma.asyncJob.deleteMany({ where: { leadId } }),
+      prisma.lead.delete({ where: { id: leadId } })
+    ]);
+    return { success: true };
+  } catch (error) {
+    console.error("Failed to delete lead:", error);
+    return { success: false };
+  }
+}
+
+/**
+ * Emergency cleanup for audits stuck in 'AUDIT' status
+ */
+export async function cleanupHungAudits() {
+  const prisma = getPrisma();
+  const workspace = await getActiveWorkspace();
+  
+  // Find leads in AUDIT status older than 5 minutes
+  const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+  
+  try {
+    const hungLeads = await prisma.lead.updateMany({
+      where: {
+        workspaceId: workspace.id,
+        status: "AUDIT",
+        updatedAt: { lt: fiveMinutesAgo }
+      },
+      data: { status: "NEW" }
+    });
+    
+    return { success: true, count: hungLeads.count };
+  } catch (error) {
+    return { success: false };
+  }
+}

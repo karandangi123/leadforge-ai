@@ -18,9 +18,11 @@ import {
   RefreshCw,
   Globe,
   User,
-  Radar
+  Radar,
+  Trash2,
+  Activity
 } from "lucide-react";
-import { getWarRoomLeads, getLeadForensicData, getLeadSynthesis } from "@/app/actions/war-room";
+import { getWarRoomLeads, getLeadForensicData, getLeadSynthesis, deleteWarRoomLead, cleanupHungAudits } from "@/app/actions/war-room";
 import { runVisionAudit, getVisionJobStatus, fastAudit, cancelVisionAudit } from "@/app/actions/vision-audit";
 import { AnnotatedScreenshot } from "@/components/war-room/annotated-screenshot";
 
@@ -57,11 +59,17 @@ export default function WarRoom() {
     console.log(`[WarRoom] ${msg}`);
   };
 
+  const startDeepAudit = async (leadId: string) => {
+    if (leadId.startsWith('seed-')) {
+      alert("Note: This is a demo lead. Real infrastructure actions are disabled for seeds.");
+      return;
+    }
+
     // Singleton Research Policy + 5min Timeout Recovery
     const ongoingAudit = briefs.find(b => b.status === 'AUDIT');
     const isHung = ongoingAudit && (new Date().getTime() - new Date(ongoingAudit.updatedAt || ongoingAudit.createdAt).getTime() > 300000);
 
-    if ((isAuditing || (ongoingAudit && !isHung)) && !leadId.startsWith('force-')) {
+    if ((isAuditing || (ongoingAudit && !isHung)) && !leadId?.startsWith('force-')) {
       alert("1 RESEARCH IN PROGRESS, WAIT FOR COMPLETION. We limit concurrent forensic scans to ensure 100% accuracy.");
       return;
     }
@@ -203,6 +211,36 @@ export default function WarRoom() {
     }
   };
 
+  const handleDeleteLead = async (e: React.MouseEvent, leadId: string) => {
+    e.stopPropagation(); // Don't select the lead
+    if (leadId.startsWith('seed-')) return;
+    
+    const confirmDelete = confirm("Delete this search site and all its forensic data?");
+    if (!confirmDelete) return;
+
+    try {
+      const res = await deleteWarRoomLead(leadId);
+      if (res.success) {
+        setBriefs(prev => prev.filter(b => b.id !== leadId));
+        if (selectedLead?.id === leadId) {
+          setSelectedLead(null);
+        }
+        notify("Lead removed from perimeter.");
+      }
+    } catch (e) {
+      alert("Failed to delete lead.");
+    }
+  };
+
+  const runCleanup = async () => {
+    const res = await cleanupHungAudits();
+    if (res.success) {
+      const data = await getWarRoomLeads();
+      setBriefs(data.length > 0 ? data : MOCK_BRIEFS);
+      notify(`Cleanup complete. ${res.count} hung tasks reset.`);
+    }
+  };
+
   useEffect(() => {
     async function loadData() {
       try {
@@ -298,16 +336,23 @@ export default function WarRoom() {
             </button>
           </form>
 
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
-            <input 
-              type="text" 
-              placeholder="Search leads..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-zinc-900/50 border border-zinc-800 rounded-xl pl-10 pr-4 py-2.5 text-sm focus:ring-1 ring-emerald-500/50 outline-none transition-all"
-            />
-          </div>
+              <div className="relative group">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-600" />
+                <input 
+                  type="text"
+                  placeholder="Search leads..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full bg-zinc-900 border border-white/5 rounded-2xl py-4 pl-12 pr-4 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-amber-500/50 transition-all shadow-inner"
+                />
+                <button 
+                  onClick={runCleanup}
+                  title="Cleanup Hung Audits"
+                  className="absolute right-4 top-1/2 -translate-y-1/2 p-2 rounded-lg bg-zinc-800 border border-white/5 text-zinc-500 hover:text-emerald-500 transition-all"
+                >
+                  <Activity className="w-4 h-4" />
+                </button>
+              </div>
         </div>
 
         <div className="flex-1 overflow-y-auto p-4 space-y-2 custom-scrollbar">
@@ -326,6 +371,14 @@ export default function WarRoom() {
                 <span className="font-bold text-zinc-100">{brief.company}</span>
                 {brief.isPending && (
                   <span className="text-[9px] bg-amber-500/10 text-amber-500 px-2 py-0.5 rounded-full border border-amber-500/20 animate-pulse">Syncing...</span>
+                )}
+                {!brief.id.startsWith('seed-') && (
+                  <button 
+                    onClick={(e) => handleDeleteLead(e, brief.id)}
+                    className="p-1.5 rounded-lg bg-red-500/10 text-red-500 border border-red-500/20 opacity-0 group-hover:opacity-100 transition-all hover:bg-red-500 hover:text-white"
+                  >
+                    <Trash2 className="w-3 h-3" />
+                  </button>
                 )}
               </div>
               <div className="text-xs text-zinc-500 truncate mb-3">{brief.executiveSummary}</div>

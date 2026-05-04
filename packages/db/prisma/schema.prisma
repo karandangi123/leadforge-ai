@@ -445,6 +445,7 @@ model WebsiteAudit {
   readyToSendMessage String?     @db.Text
   confidence      Float?
   proofUrl        String?        // Public link to the proof package
+  publicProofId   String?        @unique @default(cuid()) // For portable sharing
   findings        AuditFinding[]
   screenshots     WebsiteScreenshot[]
   createdAt       DateTime       @default(now())

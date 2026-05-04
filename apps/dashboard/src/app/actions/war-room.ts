@@ -98,6 +98,7 @@ export async function getLeadForensicData(leadId: string) {
     businessImpact: audit.businessImpact,
     readyToSendMessage: audit.readyToSendMessage,
     confidence: audit.confidence || 0.95,
+    publicProofId: audit.publicProofId,
     findings: findings.map(f => ({
       x: f.x,
       y: f.y,

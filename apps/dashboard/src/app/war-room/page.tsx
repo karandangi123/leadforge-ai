@@ -661,6 +661,19 @@ export default function WarRoom() {
                             Confidence: {Math.round((selectedLead.findings[0]?.confidence || 0.95) * 100)}%
                           </div>
                         </div>
+                        <div className="flex gap-3">
+                          <button 
+                            onClick={() => {
+                              const url = `${window.location.origin}/proof/${selectedLead.publicProofId || 'demo'}`;
+                              navigator.clipboard.writeText(url);
+                              notify("Public proof link copied to clipboard.");
+                            }}
+                            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-zinc-400 hover:text-white transition-all border border-white/5"
+                          >
+                            <ExternalLink className="w-3.5 h-3.5" />
+                            <span className="text-[10px] font-bold uppercase tracking-widest text-[8px]">Copy Proof Link</span>
+                          </button>
+                        </div>
                       </div>
                       <div className="rounded-[3rem] overflow-hidden border border-white/10 shadow-2xl bg-zinc-900/50 p-2 group relative">
                         <div className="absolute top-8 right-8 z-10 opacity-0 group-hover:opacity-100 transition-opacity">

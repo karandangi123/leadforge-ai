@@ -19,14 +19,18 @@ import {
   Plus
 } from "lucide-react";
 import { addDncEntry, toggleSso } from "@/app/actions/security";
+import { removeMfa } from "@/app/actions/mfa";
+import { MFASetupModal } from "./mfa-setup-modal";
+import { toast } from "sonner";
 
 interface SecurityCenterProps {
   initialAuditLogs: any[];
   initialDncEntries: any[];
 }
 
-export function SecurityCenter({ initialAuditLogs, initialDncEntries }: SecurityCenterProps) {
+export function SecurityCenter({ initialAuditLogs, initialDncEntries, mfaEnabled }: SecurityCenterProps & { mfaEnabled?: boolean }) {
   const [activeTab, setActiveTab] = useState<"COMPLIANCE" | "RBAC" | "DNC" | "AUDIT">("COMPLIANCE");
+  const [showMfaSetup, setShowMfaSetup] = useState(false);
 
   return (
     <div className="flex flex-col h-full space-y-6">
@@ -71,18 +75,19 @@ export function SecurityCenter({ initialAuditLogs, initialDncEntries }: Security
         ))}
       </div>
 
-      {/* Content Area */}
       <div className="flex-1">
-        {activeTab === "COMPLIANCE" && <ComplianceView />}
+        {activeTab === "COMPLIANCE" && <ComplianceView mfaEnabled={mfaEnabled} onEnableMfa={() => setShowMfaSetup(true)} />}
         {activeTab === "RBAC" && <RbacView />}
         {activeTab === "DNC" && <DncView initialEntries={initialDncEntries} />}
         {activeTab === "AUDIT" && <AuditLogView logs={initialAuditLogs} />}
       </div>
+
+      {showMfaSetup && <MFASetupModal onClose={() => setShowMfaSetup(false)} />}
     </div>
   );
 }
 
-function ComplianceView() {
+function ComplianceView({ mfaEnabled, onEnableMfa }: { mfaEnabled?: boolean; onEnableMfa: () => void }) {
   const requirements = [
     { name: "GDPR (EU Data Protection)", status: "ACTIVE", detail: "EU-US Data Privacy Framework active." },
     { name: "CCPA (California Privacy)", status: "ACTIVE", detail: "Right-to-opt-out enabled for all leads." },
@@ -121,9 +126,26 @@ function ComplianceView() {
             <button className="px-5 py-2.5 bg-[#176b5d] text-white text-xs font-black rounded-xl hover:bg-[#115247] transition-all">
               Configure SSO
             </button>
-            <button className="px-5 py-2.5 bg-white/10 text-white text-xs font-black rounded-xl hover:bg-white/20 transition-all">
-              Enable MFA
-            </button>
+            {mfaEnabled ? (
+              <button 
+                onClick={async () => {
+                  if (confirm("Disable Google Authenticator?")) {
+                    await removeMfa();
+                    toast.success("MFA Disabled");
+                  }
+                }}
+                className="px-5 py-2.5 bg-red-500/10 text-red-500 border border-red-500/20 text-xs font-black rounded-xl hover:bg-red-500/20 transition-all"
+              >
+                Disable MFA
+              </button>
+            ) : (
+              <button 
+                onClick={onEnableMfa}
+                className="px-5 py-2.5 bg-white/10 text-white text-xs font-black rounded-xl hover:bg-white/20 transition-all"
+              >
+                Enable MFA
+              </button>
+            )}
           </div>
         </div>
         <div className="absolute top-0 right-0 p-4 translate-x-1/4 -translate-y-1/4 opacity-20 group-hover:scale-110 transition-transform">

@@ -7,14 +7,21 @@ import { syncGoogleAccountToWorkspace } from "./lib/google-workspace";
 import { syncWorkspaceGmailData } from "./lib/gmail-workspace-sync";
 import { ensurePersonalWorkspaceForUser } from "./lib/workspace";
 
-export const { handlers, auth, signIn, signOut } = NextAuth({
+export const { handlers, auth, signIn, signOut, unstable_update } = NextAuth({
   adapter: PrismaAdapter(getPrisma()),
   session: { strategy: "jwt" },
   callbacks: {
-    async jwt({ token, user, account }) {
+    async jwt({ token, user, account, trigger, session }) {
       if (user) {
         token.id = user.id;
+        token.mfaEnabled = (user as any).twoFactorEnabled;
+        token.mfaVerified = false;
       }
+
+      if (trigger === "update" && session?.mfaVerified) {
+        token.mfaVerified = true;
+      }
+
       if (account) {
         token.accessToken = account.access_token;
         token.refreshToken = account.refresh_token;
@@ -25,19 +32,18 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     async session({ session, token }) {
       if (token.id && session.user) {
         session.user.id = token.id as string;
+        (session.user as any).mfaEnabled = token.mfaEnabled;
+        (session.user as any).mfaVerified = token.mfaVerified;
         
-        // Handle demo user bypass
+        const prisma = getPrisma();
+
         if (token.id === "demo-user") {
-          (session.user as any).memberships = [{
-            workspaceId: "demo",
-            slug: "demo",
-            role: "OWNER",
-          }];
+          (session.user as any).memberships = [{ workspaceId: "demo", slug: "demo", role: "OWNER" }];
+          (session.user as any).mfaEnabled = false;
+          (session.user as any).mfaVerified = true;
           return session;
         }
 
-        // Fetch user memberships to include in the session
-        const prisma = getPrisma();
         const memberships = await prisma.membership.findMany({
           where: { userId: token.id as string },
           include: { workspace: true },
@@ -48,7 +54,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           slug: m.workspace.slug,
           role: m.role,
         }));
-
       }
       return session;
     },

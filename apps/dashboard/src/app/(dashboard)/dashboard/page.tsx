@@ -890,7 +890,11 @@ export default async function Home({
 
         {currentView === "security" ? (
           <div className="space-y-6 animate-fade-in">
-             <SecurityCenter initialAuditLogs={auditLogs} initialDncEntries={dncEntries} />
+             <SecurityCenter 
+               initialAuditLogs={auditLogs} 
+               initialDncEntries={dncEntries} 
+               mfaEnabled={(session?.user as any)?.twoFactorEnabled}
+             />
           </div>
         ) : null}
 

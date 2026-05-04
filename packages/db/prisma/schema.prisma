@@ -441,6 +441,10 @@ model WebsiteAudit {
   videoScript     String?        @db.Text
   videoUrl        String?        // New for Phase 9.2
   videoStatus     String?        @default("PENDING") // PENDING, GENERATING, COMPLETED, FAILED
+  businessImpact  String?        @db.Text
+  readyToSendMessage String?     @db.Text
+  confidence      Float?
+  proofUrl        String?        // Public link to the proof package
   findings        Json           @default("[]")
   screenshots     WebsiteScreenshot[]
   createdAt       DateTime       @default(now())

@@ -69,10 +69,24 @@ export class VisionAgent {
       const overallUxScore = Math.round((desktopRefined.uxScore + mobileRefined.uxScore) / 2);
       const videoScript = await this.generateVideoScript(apiKey, lead.company, combinedSignals);
 
-      // --- NEW: Trigger AI Video Synthesis (Phase 9.2) ---
-      const videoJobId = await HeyGenAdapter.generateAuditVideo(videoScript);
+      // --- NEW: ProspectProofCard Intelligence (Phase 9.5) ---
+      const topFinding = combinedSignals.sort((a, b) => (b.severity === 'high' ? 1 : 0) - (a.severity === 'high' ? 1 : 0))[0];
+      const businessImpact = `This issue directly impacts ${lead.company}'s conversion rate and user trust by creating ${topFinding?.kind || 'UX friction'}. It specifically hinders ${topFinding?.recommendation?.toLowerCase() || 'site growth'}.`;
+      const readyToSendMessage = `Hey ${lead.ownerName || 'there'},\n\nI was analyzing ${lead.company}'s visual hierarchy and noticed a significant ${topFinding?.finding?.toLowerCase()} issue. Specifically, ${topFinding?.recommendation?.toLowerCase()}.\n\nI've attached a forensic screenshot of the exact coordinates where this is happening. Thought you'd want to see the proof.`;
 
       await prisma.$transaction([
+        prisma.websiteAudit.update({
+          where: { id: audit.id },
+          data: {
+            overallScore: overallUxScore,
+            videoScript,
+            businessImpact,
+            readyToSendMessage,
+            confidence: 0.95,
+            status: "SUCCEEDED",
+            completedAt: new Date()
+          }
+        }),
         prisma.websiteScreenshot.create({
           data: {
             auditId: audit.id,

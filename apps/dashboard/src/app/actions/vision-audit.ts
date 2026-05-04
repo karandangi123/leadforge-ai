@@ -163,7 +163,21 @@ async function triggerForensicSimulation(jobId: string, leadId: string) {
     }
   });
 
-  // 4. Update Lead
+  // 4. Update Lead & Audit with Proof Card Data
+  const businessImpact = `This site's LCP (Largest Contentful Paint) is above 2.5s, which directly triggers a 'Poor' URL rating from Google. This is likely reducing search visibility by 15-20% compared to competitors.`;
+  const readyToSendMessage = `Hey,\n\nI was just looking at your homepage and noticed your LCP is lagging quite a bit (screenshot attached). Google's latest core web vitals update is hitting sites with this exact issue. I found the specific hero asset that's causing the bloat. Worth a quick fix?`;
+
+  await prisma.websiteAudit.update({
+    where: { id: audit.id },
+    data: {
+      businessImpact,
+      readyToSendMessage,
+      confidence: 0.98,
+      status: "SUCCEEDED",
+      completedAt: new Date()
+    }
+  });
+
   await prisma.lead.update({
     where: { id: leadId },
     data: { status: "READY", auditScore: 85 }

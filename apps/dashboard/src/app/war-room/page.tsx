@@ -20,7 +20,10 @@ import {
   User,
   Radar,
   Trash2,
-  Activity
+  Activity,
+  Copy,
+  ExternalLink,
+  Target as TargetIcon
 } from "lucide-react";
 import { getWarRoomLeads, getLeadForensicData, getLeadSynthesis, deleteWarRoomLead, cleanupHungAudits } from "@/app/actions/war-room";
 import { runVisionAudit, getVisionJobStatus, fastAudit, cancelVisionAudit } from "@/app/actions/vision-audit";
@@ -550,20 +553,42 @@ export default function WarRoom() {
                 </div>
 
                 <div className="p-8 rounded-[2.5rem] bg-gradient-to-br from-blue-500/10 to-transparent border border-blue-500/20 relative overflow-hidden">
-                  {synthesisLoading && (
-                    <div className="absolute inset-0 bg-black/40 backdrop-blur-sm z-10 flex items-center justify-center">
-                      <RefreshCw className="w-5 h-5 text-blue-500 animate-spin" />
-                    </div>
-                  )}
                   <div className="flex items-center gap-3 mb-6">
                     <div className="w-8 h-8 rounded-xl bg-blue-500/20 flex items-center justify-center">
-                      <Shield className="w-4 h-4 text-blue-400" />
+                      <TargetIcon className="w-4 h-4 text-blue-500" />
                     </div>
-                    <h4 className="text-xs font-black uppercase tracking-[0.2em] text-blue-400">Positioning Advantage</h4>
+                    <h4 className="text-xs font-black uppercase tracking-[0.2em] text-blue-400">Business Impact Analysis</h4>
                   </div>
                   <p className="text-lg leading-relaxed text-zinc-300">
-                    {selectedLead.competitorGap}
+                    {selectedLead.businessImpact || selectedLead.competitorGap}
                   </p>
+                </div>
+
+                <div className="p-8 rounded-[2.5rem] bg-zinc-900 border border-white/5 col-span-2 shadow-2xl relative group overflow-hidden">
+                  <div className="absolute inset-0 bg-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity" />
+                  <div className="flex items-center justify-between mb-8">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-xl bg-emerald-500/20 flex items-center justify-center">
+                        <MessageSquare className="w-4 h-4 text-emerald-500" />
+                      </div>
+                      <h4 className="text-xs font-black uppercase tracking-[0.2em] text-emerald-400">Ready-to-Send Proof Message</h4>
+                    </div>
+                    <button 
+                      onClick={() => {
+                        navigator.clipboard.writeText(selectedLead.readyToSendMessage || "");
+                        notify("Proof message copied to clipboard.");
+                      }}
+                      className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-zinc-400 hover:text-white transition-all border border-white/5"
+                    >
+                      <Copy className="w-3.5 h-3.5" />
+                      <span className="text-[10px] font-bold uppercase tracking-widest">Copy Message</span>
+                    </button>
+                  </div>
+                  <div className="bg-black/40 rounded-3xl p-8 border border-white/5 backdrop-blur-md">
+                    <p className="text-xl font-medium leading-relaxed text-zinc-200 whitespace-pre-wrap">
+                      {selectedLead.readyToSendMessage || "Generating high-fidelity proof message..."}
+                    </p>
+                  </div>
                 </div>
 
                 <div className="col-span-2">
@@ -577,10 +602,19 @@ export default function WarRoom() {
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3 text-amber-400">
                           <Radar className="w-5 h-5" />
-                          <h4 className="text-xs font-black uppercase tracking-[0.2em]">Forensic Visual Proof (Desktop)</h4>
+                          <h4 className="text-xs font-black uppercase tracking-[0.2em]">Forensic Proof Package (Evidence Attached)</h4>
+                        </div>
+                        <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-zinc-500">
+                          <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                          Confidence: {Math.round((selectedLead.confidence || 0.95) * 100)}%
                         </div>
                       </div>
-                      <div className="rounded-[3rem] overflow-hidden border border-white/10 shadow-2xl bg-zinc-900/50 p-2">
+                      <div className="rounded-[3rem] overflow-hidden border border-white/10 shadow-2xl bg-zinc-900/50 p-2 group relative">
+                        <div className="absolute top-8 right-8 z-10 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button className="p-3 bg-black/80 backdrop-blur-md rounded-2xl border border-white/10 text-white hover:bg-emerald-500 hover:border-emerald-500 transition-all shadow-2xl">
+                            <ExternalLink className="w-4 h-4" />
+                          </button>
+                        </div>
                         <AnnotatedScreenshot 
                           imageUrl={selectedLead.screenshotUrl} 
                           annotations={selectedLead.findings || []} 

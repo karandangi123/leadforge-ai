@@ -90,6 +90,9 @@ export async function getLeadForensicData(leadId: string) {
 
   return {
     screenshotUrl: desktop.imageUrl,
+    businessImpact: audit.businessImpact,
+    readyToSendMessage: audit.readyToSendMessage,
+    confidence: audit.confidence || 0.95,
     findings: desktop.annotations.map(a => ({
       x: a.x,
       y: a.y,

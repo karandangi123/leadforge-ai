@@ -36,7 +36,21 @@ export class BriefSynthesisAgent {
       throw new Error("Lead data incomplete for synthesis.");
     }
 
+    // --- NEW: Return cached brief if available ---
+    if (lead.enrichmentProfile.salesBrief && Object.keys(lead.enrichmentProfile.salesBrief as object).length > 0) {
+      return {
+        data: lead.enrichmentProfile.salesBrief as LeadBrief,
+        mode: "cache",
+        model: "local",
+        latencyMs: Date.now() - startedAt,
+        tokenCount: 0
+      };
+    }
+
     const apiKey = process.env.GROQ_API_KEY || process.env.OPENAI_API_KEY;
+    if (!apiKey) {
+      throw new Error("No AI Infrastructure API key detected. Please configure GROQ_API_KEY.");
+    }
     const isGroq = apiKey?.startsWith("gsk_");
     
     // 2. Specialized synthesis prompt
@@ -68,7 +82,16 @@ Output a JSON object with:
     });
 
     const result = await response.json() as any;
+    if (!result.choices?.[0]?.message?.content) {
+      throw new Error(`LLM synthesis failed: ${JSON.stringify(result)}`);
+    }
     const brief = JSON.parse(result.choices[0].message.content) as LeadBrief;
+
+    // 3. Cache the brief in the DB
+    await prisma.enrichmentProfile.update({
+      where: { leadId },
+      data: { salesBrief: brief as any }
+    });
 
     return {
       data: brief,

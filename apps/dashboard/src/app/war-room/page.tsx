@@ -20,7 +20,7 @@ import {
   User,
   Radar
 } from "lucide-react";
-import { getWarRoomLeads } from "@/app/actions/war-room";
+import { getWarRoomLeads, getLeadForensicData } from "@/app/actions/war-room";
 import { runVisionAudit, getVisionJobStatus, fastAudit } from "@/app/actions/vision-audit";
 import { AnnotatedScreenshot } from "@/components/war-room/annotated-screenshot";
 
@@ -49,6 +49,7 @@ export default function WarRoom() {
   const [trackingId, setTrackingId] = useState<string | null>(null);
   const [fastUrl, setFastUrl] = useState("");
   const [isIngesting, setIsIngesting] = useState(false);
+  const [forensicLoading, setForensicLoading] = useState(false);
 
   const notify = (msg: string) => {
     console.log(`[WarRoom] ${msg}`);
@@ -137,14 +138,42 @@ export default function WarRoom() {
 
   useEffect(() => {
     async function loadData() {
-      const data = await getWarRoomLeads();
-      const finalData = data.length > 0 ? data : MOCK_BRIEFS;
-      setBriefs(finalData);
-      setSelectedLead(finalData[0]);
-      setLoading(false);
+      try {
+        const data = await getWarRoomLeads();
+        const finalData = data.length > 0 ? data : MOCK_BRIEFS;
+        setBriefs(finalData);
+        handleSelectLead(finalData[0]);
+      } catch (e) {
+        console.error("War Room Load Error:", e);
+        setBriefs(MOCK_BRIEFS);
+        handleSelectLead(MOCK_BRIEFS[0]);
+      } finally {
+        setLoading(false);
+      }
     }
     loadData();
   }, []);
+
+  const handleSelectLead = async (lead: any) => {
+    setSelectedLead(lead);
+    if (!lead || lead.id.startsWith('seed-')) return;
+    
+    setForensicLoading(true);
+    try {
+      const forensic = await getLeadForensicData(lead.id);
+      if (forensic) {
+        setSelectedLead((prev: any) => ({
+          ...prev,
+          screenshotUrl: forensic.screenshotUrl,
+          findings: forensic.findings
+        }));
+      }
+    } catch (e) {
+      console.error("Failed to load forensic data:", e);
+    } finally {
+      setForensicLoading(false);
+    }
+  };
 
   const filteredBriefs = briefs.filter(b => 
     b.company.toLowerCase().includes(searchQuery.toLowerCase())
@@ -200,7 +229,7 @@ export default function WarRoom() {
           {filteredBriefs.map((brief) => (
             <motion.button
               key={brief.id}
-              onClick={() => setSelectedLead(brief)}
+              onClick={() => handleSelectLead(brief)}
               whileHover={{ x: 4 }}
               className={`w-full text-left p-4 rounded-2xl transition-all border ${
                 selectedLead?.id === brief.id 
@@ -339,7 +368,12 @@ export default function WarRoom() {
                 </div>
 
                 <div className="col-span-2">
-                  {selectedLead.screenshotUrl ? (
+                  {forensicLoading ? (
+                    <div className="p-20 rounded-[3rem] bg-zinc-950/50 border border-white/5 flex flex-col items-center justify-center text-center">
+                      <RefreshCw className="w-8 h-8 text-emerald-500 animate-spin mb-4" />
+                      <p className="text-zinc-500 font-bold uppercase tracking-widest text-[10px]">Retrieving Forensic Evidence...</p>
+                    </div>
+                  ) : selectedLead.screenshotUrl ? (
                     <div className="space-y-6">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3 text-amber-400">

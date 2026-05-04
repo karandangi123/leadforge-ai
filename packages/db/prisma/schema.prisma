@@ -859,6 +859,7 @@ model EnrichmentProfile {
   headquartersState  String?
   headquartersCountry String?
   description        String?   @db.Text
+  salesBrief         Json?     @default("{}")
 
   // Technographics
   techStack          Json      @default("[]")    // [{name, category, confidence}]

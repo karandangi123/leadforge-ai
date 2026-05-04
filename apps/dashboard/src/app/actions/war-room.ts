@@ -24,30 +24,34 @@ export async function getWarRoomLeads() {
       }
     },
     orderBy: { createdAt: "desc" },
-    take: 20
+    take: 10
   });
 
   if (leads.length === 0) return [];
 
-  const enrichedLeads = await Promise.all(leads.map(async (lead) => {
+  // 3. Sequential synthesis to prevent LLM rate limiting/UI deadlock
+  const enrichedLeads = [];
+  for (const lead of leads) {
     let brief;
     try {
+      // synthesis handles caching internally now
       const synthesis = await BriefSynthesisAgent.synthesize(lead.id);
       brief = synthesis.data;
     } catch (e) {
       brief = {
         executiveSummary: lead.enrichmentProfile?.description?.split('\n\n')[0] || "No summary available.",
-        silverBulletHook: "Generating hook...",
-        competitorGap: "No competitor signals detected yet.",
+        silverBulletHook: "Contextual hook pending...",
+        competitorGap: "Intelligence gathering in progress.",
         visualSignal: "Visual audit pending.",
-        score: 70
+        score: lead.fitScore || 70
       };
     }
 
     const latestAudit = lead.websiteAudits[0];
-    const desktopScreenshot = latestAudit?.screenshots.find(s => s.viewport === 'DESKTOP');
+    // Check both casings as schema may vary during migration
+    const desktopScreenshot = latestAudit?.screenshots.find(s => s.viewport === 'DESKTOP' || s.viewport === 'desktop');
 
-    return {
+    enrichedLeads.push({
       id: lead.id,
       company: lead.company,
       website: lead.website || "",
@@ -58,15 +62,38 @@ export async function getWarRoomLeads() {
       silverBulletHook: brief.silverBulletHook,
       competitorGap: brief.competitorGap,
       visualSignal: brief.visualSignal,
-      screenshotUrl: desktopScreenshot?.imageUrl,
-      findings: desktopScreenshot?.annotations?.map(a => ({
-        x: a.x,
-        y: a.y,
-        label: a.label,
-        severity: a.severity
-      })) || []
-    };
-  }));
+    });
+  }
 
   return enrichedLeads;
+}
+
+export async function getLeadForensicData(leadId: string) {
+  const prisma = getPrisma();
+  
+  const audit = await prisma.websiteAudit.findFirst({
+    where: { leadId },
+    orderBy: { createdAt: "desc" },
+    include: {
+      screenshots: {
+        include: { annotations: true }
+      }
+    }
+  });
+
+  if (!audit) return null;
+
+  const desktop = audit.screenshots.find(s => s.viewport === 'DESKTOP' || s.viewport === 'desktop');
+  if (!desktop) return null;
+
+  return {
+    screenshotUrl: desktop.imageUrl,
+    findings: desktop.annotations.map(a => ({
+      x: a.x,
+      y: a.y,
+      finding: a.label,
+      recommendation: a.recommendation,
+      severity: a.severity
+    }))
+  };
 }

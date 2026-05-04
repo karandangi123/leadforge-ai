@@ -159,8 +159,8 @@ export async function importLeadsCsv(state: CsvImportState, formData: FormData):
 /**
  * Demo: Create a sample lead
  */
-export async function createSampleLead() {
-  return addLead({
+export async function createSampleLead(formData: FormData) {
+  await addLead({
     company: "Future AI",
     website: "futureai.io",
     contactName: "Sam Altman (Sample)",

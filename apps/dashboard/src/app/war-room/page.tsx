@@ -241,6 +241,26 @@ export default function WarRoom() {
     }
   };
 
+  const loadLabExamples = async () => {
+    const examples = [
+      { url: "https://stripe.com", name: "STRIPE" },
+      { url: "https://slack.com", name: "SLACK" },
+      { url: "https://notion.so", name: "NOTION" },
+      { url: "https://airbnb.com", name: "AIRBNB" },
+      { url: "https://salesforce.com", name: "SALESFORCE" }
+    ];
+    
+    notify("Populating Discovery Lab...");
+    for (const site of examples) {
+      try {
+        await fastAudit(site.url);
+      } catch (e) {}
+    }
+    const data = await getWarRoomLeads();
+    setBriefs(data.length > 0 ? data : MOCK_BRIEFS);
+    notify("Discovery Lab Online.");
+  };
+
   useEffect(() => {
     async function loadData() {
       try {
@@ -348,9 +368,16 @@ export default function WarRoom() {
                 <button 
                   onClick={runCleanup}
                   title="Cleanup Hung Audits"
-                  className="absolute right-4 top-1/2 -translate-y-1/2 p-2 rounded-lg bg-zinc-800 border border-white/5 text-zinc-500 hover:text-emerald-500 transition-all"
+                  className="absolute right-12 top-1/2 -translate-y-1/2 p-2 rounded-lg bg-zinc-800 border border-white/5 text-zinc-500 hover:text-emerald-500 transition-all"
                 >
                   <Activity className="w-4 h-4" />
+                </button>
+                <button 
+                  onClick={loadLabExamples}
+                  title="Load Discovery Lab Examples"
+                  className="absolute right-4 top-1/2 -translate-y-1/2 p-2 rounded-lg bg-zinc-800 border border-white/5 text-zinc-500 hover:text-amber-500 transition-all"
+                >
+                  <TrendingUp className="w-4 h-4" />
                 </button>
               </div>
         </div>
@@ -387,8 +414,10 @@ export default function WarRoom() {
               <div className="text-xs text-zinc-500 truncate mb-3">{brief.executiveSummary}</div>
               <div className="flex items-center gap-3">
                 <div className="flex items-center gap-1">
-                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                  <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-tighter">Fit: {brief.score || brief.fitScore}%</span>
+                  <div className={`w-1.5 h-1.5 rounded-full ${brief.status === 'AUDIT' ? 'bg-amber-500 animate-pulse' : 'bg-emerald-500'}`} />
+                  <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-tighter">
+                    {brief.status === 'AUDIT' ? 'Auditing Perimeter...' : `Fit: ${brief.score || 70}%`}
+                  </span>
                 </div>
               </div>
             </motion.button>

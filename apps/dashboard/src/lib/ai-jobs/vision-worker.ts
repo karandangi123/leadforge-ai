@@ -14,15 +14,58 @@ export const visionQueue = new Queue("vision-audit", { connection });
 export const visionWorker = new Worker(
   "vision-audit",
   async (job: Job) => {
-    const { leadId } = job.data;
-    console.log(`[VisionWorker] Starting audit for lead ${leadId}`);
+    const { leadId, jobRecordId } = job.data;
+    const prisma = getPrisma();
+    
+    console.log(`[VisionWorker] Starting audit for lead ${leadId} (Job: ${jobRecordId})`);
     
     try {
+      // 1. Update Job Status to RUNNING
+      await prisma.asyncJob.update({
+        where: { id: jobRecordId },
+        data: { 
+          status: "RUNNING", 
+          progress: 20,
+          startedAt: new Date(),
+          events: {
+            create: { status: "RUNNING", message: "Vision Engine Engaged. Capturing viewports..." }
+          }
+        }
+      });
+
       const result = await VisionAgent.analyzeWebsite(leadId);
+
+      // 2. Update Job Status to SUCCEEDED
+      await prisma.asyncJob.update({
+        where: { id: jobRecordId },
+        data: { 
+          status: "SUCCEEDED", 
+          progress: 100,
+          completedAt: new Date(),
+          result: result.data as any,
+          events: {
+            create: { status: "SUCCEEDED", message: "Audit complete. Proof generated." }
+          }
+        }
+      });
+
       console.log(`[VisionWorker] Successfully completed audit for ${leadId} in ${result.latencyMs}ms`);
       return result.data;
-    } catch (error) {
+    } catch (error: any) {
       console.error(`[VisionWorker] Audit failed for ${leadId}:`, error);
+      
+      // 3. Update Job Status to FAILED
+      await prisma.asyncJob.update({
+        where: { id: jobRecordId },
+        data: { 
+          status: "FAILED", 
+          errorMessage: error.message,
+          events: {
+            create: { status: "FAILED", message: `Audit failed: ${error.message}` }
+          }
+        }
+      });
+
       throw error;
     }
   },

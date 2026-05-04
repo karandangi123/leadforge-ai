@@ -34,14 +34,20 @@ export async function runVisionAudit(leadId: string) {
       }
     });
 
-    // 4. Initialize Job Tracking in DB
+    // 4. Initialize Job Tracking in DB with initial event
     const jobRecord = await prisma.asyncJob.create({
       data: {
         leadId, workspaceId: existingLead.workspaceId,
         kind: "WEBSITE_AUDIT",
         status: "QUEUED",
-        progress: 10,
-        payload: { strategy: "forensic_dual_viewport" }
+        progress: 5,
+        payload: { strategy: "forensic_dual_viewport" },
+        events: {
+          create: {
+            status: "QUEUED",
+            message: "Request queued for Vision Infrastructure."
+          }
+        }
       }
     });
 
@@ -132,10 +138,19 @@ export async function fastAudit(url: string) {
     // 3. Trigger Audit
     const result = await runVisionAudit(lead.id);
     
+    if (!result.success) {
+      throw new Error(result.error || "Failed to engage vision engine.");
+    }
+
     revalidatePath("/war-room");
     
-    return result;
-  } catch (error) {
-    return { success: false, error: "Ingest failed." };
+    return {
+      success: true,
+      trackingId: result.trackingId,
+      leadId: lead.id
+    };
+  } catch (error: any) {
+    console.error("🛑 [FastAudit] Failed:", error);
+    return { success: false, error: error.message || "Ingest failed." };
   }
 }

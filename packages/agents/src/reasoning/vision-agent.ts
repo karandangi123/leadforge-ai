@@ -53,8 +53,8 @@ export class VisionAgent {
     });
 
     try {
-      const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_AI_KEY;
-      if (!apiKey) throw new Error("Vision Engine API Key Missing.");
+      const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_AI_KEY || process.env.OPENAI_API_KEY;
+      if (!apiKey) throw new Error("No Vision Engine API Key configured (Gemini or OpenAI).");
 
       const [desktopRefined, mobileRefined] = await Promise.all([
         this.runRefinedAnalysis(apiKey, desktop.screenshotUrl, "desktop"),
@@ -152,22 +152,85 @@ export class VisionAgent {
     const topFindings = signals.filter(s => s.severity === 'high').slice(0, 2);
     const findingsList = topFindings.map(s => `- ${s.finding}: ${s.recommendation}`).join("\n");
     const prompt = `Write a 60-second video walkthrough script for ${company} based on these findings:\n${findingsList}\nKeep it professional and helpful.`;
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
-    const response = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }) });
-    const result = await response.json() as any;
-    return result.candidates[0].content.parts[0].text;
+    
+    if (apiKey.startsWith("gsk_") || apiKey.includes("generativelanguage")) {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+      const response = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }) });
+      const result = await response.json() as any;
+      return result.candidates[0].content.parts[0].text;
+    } else {
+      const response = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: { "Authorization": `Bearer ${apiKey}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ model: "gpt-4o", messages: [{ role: "user", content: prompt }] })
+      });
+      const result = await response.json() as any;
+      return result.choices[0].message.content;
+    }
   }
 
   private static async runRefinedAnalysis(apiKey: string, base64: string, viewport: string): Promise<any> {
-    const prompt = `Analyze this ${viewport} B2B screenshot. Identify 3 critical UX friction points with (x,y) coordinates. Return JSON with 'signals', 'summary', and 'uxScore' (0-100).`;
-    const response = await this.callGemini(apiKey, base64, prompt);
-    return response;
+    const prompt = `Analyze this ${viewport} B2B screenshot. Identify 3 critical UX friction points with (x,y) coordinates (0-100 scale). Return JSON with 'signals', 'summary', and 'uxScore' (0-100). 
+    Signals must have: x, y, finding, recommendation, severity, kind.`;
+    
+    try {
+      if (apiKey.startsWith("gsk_") || apiKey.includes("generativelanguage")) {
+        return await this.callGemini(apiKey, base64, prompt);
+      } else {
+        return await this.callOpenAI(apiKey, base64, prompt);
+      }
+    } catch (e) {
+      console.error(`[VisionAgent] Analysis failed for ${viewport}:`, e);
+      return {
+        signals: [],
+        summary: "Visual analysis currently unavailable.",
+        uxScore: 70
+      };
+    }
   }
 
   private static async callGemini(apiKey: string, base64: string, prompt: string): Promise<any> {
     const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
-    const response = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ contents: [{ parts: [{ text: prompt }, { inline_data: { mime_type: "image/jpeg", data: base64.replace(/^data:image\/\w+;base64,/, "") } }] }], generationConfig: { response_mime_type: "application/json", temperature: 0 } }) });
+    const response = await fetch(url, { 
+      method: "POST", 
+      headers: { "Content-Type": "application/json" }, 
+      body: JSON.stringify({ 
+        contents: [{ parts: [{ text: prompt }, { inline_data: { mime_type: "image/jpeg", data: base64.replace(/^data:image\/\w+;base64,/, "") } }] }], 
+        generationConfig: { response_mime_type: "application/json", temperature: 0 } 
+      }) 
+    });
+    
+    if (!response.ok) throw new Error(`Gemini Error: ${response.statusText}`);
     const result = await response.json() as any;
-    return JSON.parse(result.candidates[0].content.parts[0].text);
+    const content = result.candidates[0].content.parts[0].text;
+    return JSON.parse(content.replace(/```json\n?|\n?```/g, ""));
+  }
+
+  private static async callOpenAI(apiKey: string, base64: string, prompt: string): Promise<any> {
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${apiKey}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        model: "gpt-4o",
+        messages: [
+          {
+            role: "user",
+            content: [
+              { type: "text", text: prompt },
+              { type: "image_url", image_url: { url: base64 } }
+            ]
+          }
+        ],
+        response_format: { type: "json_object" },
+        temperature: 0
+      })
+    });
+
+    if (!response.ok) throw new Error(`OpenAI Error: ${response.statusText}`);
+    const result = await response.json() as any;
+    return JSON.parse(result.choices[0].message.content);
   }
 }

@@ -2,7 +2,9 @@ import { Worker } from "bullmq";
 import { executeAsyncJobById } from "../../dashboard/src/lib/ai-jobs/executor";
 import { getQueueConnection } from "../../dashboard/src/lib/ai-jobs/queue";
 import { AI_JOB_QUEUE_NAME } from "../../dashboard/src/lib/ai-jobs/types";
+import { visionWorker } from "../../dashboard/src/lib/ai-jobs/vision-worker";
 
+// Main AI Job Worker
 const worker = new Worker(
   AI_JOB_QUEUE_NAME,
   async (job) => {

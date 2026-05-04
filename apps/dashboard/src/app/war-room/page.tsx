@@ -158,9 +158,9 @@ export default function WarRoom() {
             } else if (statusRes.status === "FAILED") {
               alert(`Audit failed: ${statusRes.step}`);
               cancelAuditLocally();
-            } else if (statusRes.progress) {
-              setAuditProgress(statusRes.progress);
-              setAuditStep(statusRes.step || "Analyzing...");
+            } else {
+              if (statusRes.progress) setAuditProgress(statusRes.progress);
+              if (statusRes.step) setAuditStep(statusRes.step);
             }
           } catch (e) {
             console.error("Poll fail:", e);
@@ -600,13 +600,23 @@ export default function WarRoom() {
                   ) : selectedLead.screenshotUrl ? (
                     <div className="space-y-6">
                       <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3 text-amber-400">
-                          <Radar className="w-5 h-5" />
-                          <h4 className="text-xs font-black uppercase tracking-[0.2em]">Forensic Proof Package (Evidence Attached)</h4>
-                        </div>
-                        <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-zinc-500">
-                          <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                          Confidence: {Math.round((selectedLead.confidence || 0.95) * 100)}%
+                        <div className="flex flex-col gap-2">
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] font-black uppercase tracking-widest text-zinc-400">
+                              {selectedLead.findings[0]?.finding || "Primary Signal Detected"}
+                            </span>
+                            <span className={`px-2 py-0.5 rounded-full text-[8px] font-bold uppercase tracking-widest border ${
+                              selectedLead.findings[0]?.source === 'technical' 
+                              ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' 
+                              : 'bg-amber-500/10 text-amber-400 border-amber-500/20'
+                            }`}>
+                              Source: {selectedLead.findings[0]?.source || 'Vision Engine'}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-zinc-500">
+                            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                            Confidence: {Math.round((selectedLead.findings[0]?.confidence || 0.95) * 100)}%
+                          </div>
                         </div>
                       </div>
                       <div className="rounded-[3rem] overflow-hidden border border-white/10 shadow-2xl bg-zinc-900/50 p-2 group relative">

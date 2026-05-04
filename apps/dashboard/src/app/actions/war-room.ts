@@ -85,20 +85,30 @@ export async function getLeadForensicData(leadId: string) {
 
   if (!audit) return null;
 
-  const desktop = audit.screenshots.find(s => s.viewport === 'DESKTOP' || s.viewport === 'desktop');
+  const desktop = audit.screenshots.find(s => s.viewport === 'desktop' || s.viewport === 'DESKTOP');
   if (!desktop) return null;
+
+  const findings = await prisma.auditFinding.findMany({
+    where: { auditId: audit.id, status: { in: ["APPROVED", "NEEDS_REVIEW"] } },
+    orderBy: { confidence: "desc" }
+  });
 
   return {
     screenshotUrl: desktop.imageUrl,
     businessImpact: audit.businessImpact,
     readyToSendMessage: audit.readyToSendMessage,
     confidence: audit.confidence || 0.95,
-    findings: desktop.annotations.map(a => ({
-      x: a.x,
-      y: a.y,
-      finding: a.label,
-      recommendation: a.recommendation,
-      severity: a.severity
+    findings: findings.map(f => ({
+      x: f.x,
+      y: f.y,
+      finding: f.title,
+      recommendation: f.fixSuggestion,
+      severity: f.severity,
+      category: f.category,
+      source: f.sourceEngine,
+      confidence: f.confidence,
+      businessImpact: f.businessImpact,
+      outreachHook: f.outreachHook
     }))
   };
 }

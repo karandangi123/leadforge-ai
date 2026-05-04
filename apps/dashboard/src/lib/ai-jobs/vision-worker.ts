@@ -1,5 +1,5 @@
 import { Worker, Queue, Job } from "bullmq";
-import { VisionAgent } from "@leadforge/agents";
+import { AuditOrchestrator } from "@leadforge/agents";
 import { getPrisma } from "@leadforge/db";
 import IORedis from "ioredis";
 
@@ -25,15 +25,21 @@ export const visionWorker = new Worker(
         where: { id: jobRecordId },
         data: { 
           status: "RUNNING", 
-          progress: 20,
+          progress: 10,
           startedAt: new Date(),
           events: {
-            create: { status: "RUNNING", message: "Vision Engine Engaged. Capturing viewports..." }
+            create: { status: "RUNNING", message: "Forensic Orchestrator engaged. Normalizing perimeter..." }
           }
         }
       });
 
-      const result = await VisionAgent.analyzeWebsite(leadId);
+      // Staged Progress streaming (Phase 4 Simulation in Worker)
+      await prisma.asyncJobEvent.create({ data: { asyncJobId: jobRecordId, status: "RUNNING", message: "IdentityAgent: Detecting company profile..." } });
+      
+      const result = await AuditOrchestrator.runFullAudit(leadId);
+
+      await prisma.asyncJobEvent.create({ data: { asyncJobId: jobRecordId, status: "RUNNING", message: "VisionAgent: Analyzing visual hierarchy..." } });
+      await prisma.asyncJobEvent.create({ data: { asyncJobId: jobRecordId, status: "RUNNING", message: "TechnicalAgent: Verifying deterministic security..." } });
 
       // 2. Check if user cancelled while we were working
       const currentJob = await prisma.asyncJob.findUnique({ where: { id: jobRecordId } });
@@ -49,15 +55,15 @@ export const visionWorker = new Worker(
           status: "SUCCEEDED", 
           progress: 100,
           completedAt: new Date(),
-          result: result.data as any,
+          result: result as any,
           events: {
-            create: { status: "SUCCEEDED", message: "Audit complete. Proof generated." }
+            create: { status: "SUCCEEDED", message: "Forensic Package ready for outreach." }
           }
         }
       });
 
-      console.log(`[VisionWorker] Successfully completed audit for ${leadId} in ${result.latencyMs}ms`);
-      return result.data;
+      console.log(`[VisionWorker] Successfully completed orchestrated audit for ${leadId}`);
+      return result;
     } catch (error: any) {
       console.error(`[VisionWorker] Audit failed for ${leadId}:`, error);
       

@@ -136,30 +136,53 @@ async function triggerForensicSimulation(jobId: string, leadId: string) {
     }
   });
 
-  // 2. Create Mock Audit Results
-  const lead = await prisma.lead.findUnique({ where: { id: leadId } });
+  // 3. Create High-Fidelity Proof Packages (Failure 1 & 2 Mitigation)
   const audit = await prisma.websiteAudit.create({
     data: { 
       leadId, 
       status: "SUCCEEDED",
       overallScore: 85,
-      conversionFriction: "medium"
+      conversionFriction: "medium",
+      businessImpact: "LCP latency is currently hitting 2.8s, which exceeds Google's recommended threshold and likely impacts search ranking.",
+      readyToSendMessage: "Noticed your site has some LCP latency (2.8s)—thought you'd want to see the exact hero assets causing the bloat.",
+      confidence: 0.98
     }
   });
 
-  // 3. Create Mock Screenshot & Annotations
+  await prisma.auditFinding.createMany({
+    data: [
+      {
+        auditId: audit.id,
+        title: "LCP Optimization Needed",
+        category: "performance",
+        confidence: 0.95,
+        sourceEngine: "performance",
+        businessImpact: "Slow main content loading reduces mobile visitor retention.",
+        fixSuggestion: "Compress hero assets.",
+        outreachHook: "Noticed your mobile page takes too long to reveal the main CTA.",
+        status: "APPROVED"
+      },
+      {
+        auditId: audit.id,
+        title: "Missing Security Headers (CSP)",
+        category: "technical",
+        confidence: 0.99,
+        sourceEngine: "technical",
+        businessImpact: "Vulnerability to cross-site scripting (XSS) attacks.",
+        fixSuggestion: "Add Content-Security-Policy header.",
+        outreachHook: "Your site is missing the CSP security header, which is a key signal for enterprise trust.",
+        status: "APPROVED"
+      }
+    ]
+  });
+
+  // 4. Create Mock Screenshot
   await prisma.websiteScreenshot.create({
     data: {
       auditId: audit.id,
       viewport: "desktop",
       imageUrl: "https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&q=80&w=2426",
-      score: 85,
-      annotations: {
-        create: [
-          { x: 200, y: 150, label: "LCP Optimization Needed", recommendation: "Compress hero assets.", severity: "high" },
-          { x: 450, y: 300, label: "CLP Friction Point", recommendation: "Align CTA with visual hierarchy.", severity: "medium" }
-        ]
-      }
+      score: 85
     }
   });
 

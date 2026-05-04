@@ -445,7 +445,7 @@ model WebsiteAudit {
   readyToSendMessage String?     @db.Text
   confidence      Float?
   proofUrl        String?        // Public link to the proof package
-  findings        Json           @default("[]")
+  findings        AuditFinding[]
   screenshots     WebsiteScreenshot[]
   createdAt       DateTime       @default(now())
   completedAt     DateTime?
@@ -462,20 +462,26 @@ model WebsiteScreenshot {
   imageUrl        String         // Hosted CDN URL
   aiAnalysis      Json?          // Raw model output for this specific page
   score           Int?           // 0-100 score for this specific page
-  annotations     VisualAnnotation[]
   createdAt       DateTime       @default(now())
 }
 
-model VisualAnnotation {
+model AuditFinding {
   id              String            @id @default(cuid())
-  screenshotId    String
-  screenshot      WebsiteScreenshot @relation(fields: [screenshotId], references: [id], onDelete: Cascade)
-  x               Float             // Coordinate percentage 0-100
-  y               Float             // Coordinate percentage 0-100
-  label           String            // The finding (e.g. "Broken CTA")
-  issueType       String?           // UX, Speed, Design
-  recommendation  String?           @db.Text
+  auditId         String
+  audit           WebsiteAudit      @relation(fields: [auditId], references: [id], onDelete: Cascade)
+  title           String
+  category        String            // ux, technical, performance, copy, trust
   severity        String            @default("medium") // low, medium, high
+  confidence      Float             // 0.0 - 1.0 confidence score
+  sourceEngine    String            @default("vision") // vision, technical, performance, copy
+  evidence        Json              @default("{}") // Store specific technical/visual proof data
+  businessImpact  String            @db.Text
+  fixSuggestion   String?           @db.Text
+  outreachHook    String?           @db.Text
+  status          String            @default("APPROVED") // approved, needs_review, rejected
+  x               Float?            // Visual coordinates if applicable
+  y               Float?
+  viewport        String?           // desktop, mobile
   createdAt       DateTime          @default(now())
 }
 

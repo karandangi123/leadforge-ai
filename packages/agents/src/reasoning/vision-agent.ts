@@ -74,7 +74,14 @@ export class VisionAgent {
       const businessImpact = `This issue directly impacts ${lead.company}'s conversion rate and user trust by creating ${topFinding?.kind || 'UX friction'}. It specifically hinders ${topFinding?.recommendation?.toLowerCase() || 'site growth'}.`;
       const readyToSendMessage = `Hey ${lead.ownerName || 'there'},\n\nI was analyzing ${lead.company}'s visual hierarchy and noticed a significant ${topFinding?.finding?.toLowerCase()} issue. Specifically, ${topFinding?.recommendation?.toLowerCase()}.\n\nI've attached a forensic screenshot of the exact coordinates where this is happening. Thought you'd want to see the proof.`;
 
+      // --- Trigger AI Video Synthesis (Phase 9.2) ---
+      const videoJobId = await HeyGenAdapter.generateAuditVideo(videoScript);
+
       await prisma.$transaction([
+        prisma.lead.update({
+          where: { id: leadId },
+          data: { status: "READY", auditScore: overallUxScore }
+        }),
         prisma.websiteAudit.update({
           where: { id: audit.id },
           data: {
@@ -83,6 +90,8 @@ export class VisionAgent {
             businessImpact,
             readyToSendMessage,
             confidence: 0.95,
+            videoUrl: videoJobId,
+            videoStatus: videoJobId ? "GENERATING" : "PENDING",
             status: "SUCCEEDED",
             completedAt: new Date()
           }

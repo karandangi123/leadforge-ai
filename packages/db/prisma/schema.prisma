@@ -346,6 +346,7 @@ model AsyncJob {
   result       Json            @default("{}")
   errorMessage String?
   attemptCount Int             @default(0)
+  progress     Int             @default(0)
   queuedAt     DateTime        @default(now())
   startedAt    DateTime?
   completedAt  DateTime?

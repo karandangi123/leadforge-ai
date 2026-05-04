@@ -129,8 +129,8 @@ export async function addLead(dataOrFormData: any | FormData) {
     revalidatePath("/leads");
     revalidatePath("/dashboard");
     
-    if (dataOrFormData instanceof FormData) return;
-    return { success: true, lead };
+    
+    
   } catch (error) {
     console.error("[LeadsAction] Add lead failed", error);
   }
@@ -165,8 +165,8 @@ export async function createLeadFromInsight(dataOrFormData: any | FormData) {
     });
     revalidatePath("/dashboard");
     
-    if (dataOrFormData instanceof FormData) return;
-    return { success: true, leadId: lead.id };
+    
+    
   } catch (error) {
     console.error("[LeadsAction] Create from insight failed", error);
   }

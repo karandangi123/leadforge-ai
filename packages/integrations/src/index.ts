@@ -13,3 +13,4 @@ export * from "./sms";
 export * from "./enrichment";
 export * from "./storage";
 export * from "./heygen";
+export * from "./crypto";

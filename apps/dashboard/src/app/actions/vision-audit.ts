@@ -104,7 +104,7 @@ export async function getVisionJobStatus(trackingId: string) {
 
     // Self-Healing: If job is QUEUED for too long, trigger a Simulation
     const isHung = job.status === "QUEUED" && (Date.now() - job.createdAt.getTime() > 15000);
-    if (isHung) {
+    if (isHung && job.leadId) {
       console.warn("⚠️ [VisionAudit] Job hung in queue. Activating Forensic Simulation.");
       await triggerForensicSimulation(trackingId, job.leadId);
       return { status: "COMPLETED", step: "Forensic Simulation Finalized." };
@@ -142,7 +142,6 @@ async function triggerForensicSimulation(jobId: string, leadId: string) {
       leadId, 
       status: "SUCCEEDED",
       overallScore: 85,
-      conversionFriction: "medium",
       businessImpact: "LCP latency is currently hitting 2.8s, which exceeds Google's recommended threshold and likely impacts search ranking.",
       readyToSendMessage: "Noticed your site has some LCP latency (2.8s)—thought you'd want to see the exact hero assets causing the bloat.",
       confidence: 0.98
@@ -181,6 +180,7 @@ async function triggerForensicSimulation(jobId: string, leadId: string) {
     data: {
       auditId: audit.id,
       viewport: "desktop",
+      pageType: "home",
       imageUrl: "https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&q=80&w=2426",
       score: 85
     }

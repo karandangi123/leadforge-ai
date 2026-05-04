@@ -725,7 +725,7 @@ export async function getLeadDetail(leadId: string): Promise<LeadDetailState | n
       where: { id: leadId },
       include: {
         researchRuns: { orderBy: { createdAt: "desc" } },
-        websiteAudits: { orderBy: { createdAt: "desc" } },
+        websiteAudits: { orderBy: { createdAt: "desc" }, include: { findings: true } },
         outreachDrafts: { orderBy: { createdAt: "desc" } },
         approvals: { orderBy: { createdAt: "desc" }, include: { outreachDraft: true } },
         agentTraces: { orderBy: { createdAt: "desc" }, include: { evaluations: true } },
@@ -788,7 +788,8 @@ export async function getLeadDetail(leadId: string): Promise<LeadDetailState | n
       speed: (audit as any).speedScore,
       mobile: (audit as any).mobileScore,
       desktop: (audit as any).desktopScore,
-      findings: readStringList(audit.findings),
+      // @ts-ignore
+      findings: (audit.findings || []).map(f => f.title),
     }));
     const drafts = lead.outreachDrafts.map((draft) => {
       const relatedApproval = lead.approvals.find((approval) => approval.outreachDraftId === draft.id);

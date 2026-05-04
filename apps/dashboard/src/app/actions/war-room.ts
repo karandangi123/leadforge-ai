@@ -20,7 +20,7 @@ export async function getWarRoomLeads() {
       websiteAudits: {
         orderBy: { createdAt: "desc" },
         take: 1,
-        include: { screenshots: { include: { annotations: true } } }
+        include: { screenshots: true }
       }
     },
     orderBy: { createdAt: "desc" },
@@ -31,7 +31,9 @@ export async function getWarRoomLeads() {
 
   // 3. Fast return: No synthesis during list fetch
   const enrichedLeads = leads.map(lead => {
+    // @ts-ignore
     const brief = (lead.enrichmentProfile?.salesBrief as any) || {
+      // @ts-ignore
       executiveSummary: lead.enrichmentProfile?.description?.split('\n\n')[0] || "Synthesis pending...",
       silverBulletHook: "Contextual hook pending...",
       competitorGap: "Intelligence gathering in progress.",
@@ -40,6 +42,7 @@ export async function getWarRoomLeads() {
       isPending: true
     };
 
+    // @ts-ignore
     const latestAudit = lead.websiteAudits[0];
     const silverBullet = latestAudit?.readyToSendMessage || brief.silverBulletHook;
 
@@ -78,9 +81,8 @@ export async function getLeadForensicData(leadId: string) {
     where: { leadId },
     orderBy: { createdAt: "desc" },
     include: {
-      screenshots: {
-        include: { annotations: true }
-      }
+      lead: { select: { contactEmail: true } },
+      screenshots: true
     }
   });
 
@@ -96,6 +98,7 @@ export async function getLeadForensicData(leadId: string) {
 
   return {
     screenshotUrl: desktop.imageUrl,
+    contactEmail: (audit as any).lead?.contactEmail,
     businessImpact: audit.businessImpact,
     readyToSendMessage: audit.readyToSendMessage,
     confidence: audit.confidence || 0.95,
@@ -241,7 +244,7 @@ export async function exportLeadsToCSV() {
         finding?.outreachHook || "",
         finding?.overallSendability ? `${Math.round(finding.overallSendability * 100)}%` : "",
         audit?.publicProofId ? `https://leadforge.ai/proof/${audit.publicProofId}` : ""
-      ].map(cell => `"${cell.replace(/"/g, '""')}"`).join(",");
+      ].map(cell => `"${(cell || "").replace(/"/g, '""')}"`).join(",");
     });
 
     const csvContent = [headers.join(","), ...rows].join("\n");

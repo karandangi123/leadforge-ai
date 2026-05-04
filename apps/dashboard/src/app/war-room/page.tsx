@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { 
   Target, 
   Filter, 
@@ -110,7 +110,11 @@ export default function WarRoom() {
     if (!selectedLead || !selectedLead.findings?.[activeFindingIdx]) return;
     const finding = selectedLead.findings[activeFindingIdx];
     try {
-      const res = await createGmailDraft(selectedLead.id, finding.id);
+      const subject = `Visual Evidence: ${finding.finding || finding.title || "Observation"} for ${selectedLead.company}`;
+      const body = finding.outreachHook || "Hi, I noticed something interesting on your site...";
+      const to = selectedLead.contactEmail || "prospect@example.com"; // Fallback if missing
+      
+      const res = await createGmailDraft(selectedLead.id, subject, body, to);
       if (res.success) alert("Draft created in Gmail.");
     } catch (e) {
       alert("Failed to create draft.");

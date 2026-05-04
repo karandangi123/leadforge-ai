@@ -2,6 +2,7 @@ import { getPrisma } from "@leadforge/db";
 import { notFound } from "next/navigation";
 import { Metadata } from "next";
 import { Shield, Target, AlertTriangle, ArrowRight, Zap, CheckCircle } from "lucide-react";
+import { motion } from "framer-motion";
 
 export async function generateMetadata({ params }: { params: { id: string } }): Promise<Metadata> {
   const prisma = getPrisma();
@@ -133,7 +134,7 @@ export default async function PublicProofPage({ params }: { params: { id: string
                 <span className="text-[10px] font-black text-zinc-300 uppercase tracking-widest">LIVE FORENSIC SIGNAL</span>
               </div>
             </div>
-          </div>
+          </motion.div>
 
           <div className="space-y-8 lg:sticky lg:top-32">
             <div className="p-8 rounded-[2.5rem] bg-zinc-900/50 border border-white/5 backdrop-blur-3xl space-y-8 relative overflow-hidden group">

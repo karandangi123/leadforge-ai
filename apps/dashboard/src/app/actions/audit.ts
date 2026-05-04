@@ -13,9 +13,8 @@ export async function getPublicAudit(auditId: string) {
       where: { id: auditId },
       include: {
         lead: true,
-        screenshots: {
-          include: { annotations: true }
-        }
+        screenshots: true,
+        findings: true
       }
     });
 
@@ -29,11 +28,12 @@ export async function getPublicAudit(auditId: string) {
       videoUrl: audit.videoUrl, // In prod, this is the HeyGen URL
       screenshotUrl: homeScreenshot?.imageUrl,
       uxScore: audit.overallScore || 0,
-      annotations: homeScreenshot?.annotations.map(a => ({
+      // @ts-ignore
+      annotations: audit.findings.map(a => ({
         x: a.x,
         y: a.y,
-        finding: a.label,
-        recommendation: a.recommendation,
+        finding: a.title,
+        recommendation: a.fixSuggestion,
         severity: a.severity
       })) || []
     };

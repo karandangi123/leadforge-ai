@@ -3,8 +3,7 @@
 import { getPrisma } from "@leadforge/db";
 import { SequenceHealerAgent, OutreachAgent } from "@leadforge/agents";
 import { revalidatePath } from "next/cache";
-import { createGmailDraftFromConnection } from "@leadforge/integrations";
-import { TokenCrypto } from "@leadforge/integrations/src/crypto";
+import { createGmailDraftFromConnection, TokenCrypto } from "@leadforge/integrations";
 
 /**
  * Server Action: Create a Gmail draft for a specific lead

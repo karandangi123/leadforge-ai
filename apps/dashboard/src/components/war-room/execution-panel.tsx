@@ -6,7 +6,6 @@ import {
   CheckCircle, 
   XCircle, 
   Mail, 
-  Linkedin, 
   Database, 
   Copy, 
   Edit3,
@@ -16,6 +15,7 @@ import {
   Zap,
   Target
 } from "lucide-react";
+import { Linkedin } from "@/components/ui/BrandIcons";
 
 interface ExecutionPanelProps {
   finding: {
@@ -34,9 +34,10 @@ interface ExecutionPanelProps {
   onApprove: () => void;
   onReject: () => void;
   onEdit: () => void;
+  onCRMExport: () => void;
 }
 
-export function ExecutionPanel({ finding, onApprove, onReject, onEdit }: ExecutionPanelProps) {
+export function ExecutionPanel({ finding, onApprove, onReject, onEdit, onCRMExport }: ExecutionPanelProps) {
   const [activeTab, setActiveTab] = useState<"email" | "linkedin" | "crm">("email");
 
   const scores = [
@@ -173,7 +174,7 @@ export function ExecutionPanel({ finding, onApprove, onReject, onEdit }: Executi
             <XCircle className="w-6 h-6" />
           </button>
           <button 
-            onClick={onApprove}
+            onClick={activeTab === "crm" ? onCRMExport : onApprove}
             className="flex-1 h-14 rounded-2xl bg-white text-black font-black uppercase tracking-widest text-xs hover:bg-leadforge-blue hover:text-white transition-all flex items-center justify-center gap-3 shadow-2xl group"
           >
             {activeTab === "email" ? "Draft Gmail Message" : activeTab === "linkedin" ? "Copy LinkedIn DM" : "Export to CRM"}

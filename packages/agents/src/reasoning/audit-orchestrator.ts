@@ -2,6 +2,8 @@ import { getPrisma } from "@leadforge/db";
 import { IdentityAgent } from "./identity-agent";
 import { VisionAgent } from "./vision-agent";
 import { TechnicalAgent } from "./technical-agent";
+import { PerformanceAgent } from "./performance-agent";
+import { CopyAgent } from "./copy-agent";
 
 export class AuditOrchestrator {
   static async runFullAudit(leadId: string) {
@@ -13,11 +15,17 @@ export class AuditOrchestrator {
     // 2. Vision Layer (Multi-Viewport)
     const visionResults = await VisionAgent.analyzeWebsite(leadId);
     
-    // 3. Technical Layer
+    // 3. Technical & Performance Layers
     const lead = await prisma.lead.findUnique({ where: { id: leadId } });
-    const technicalFindings = await TechnicalAgent.audit(lead?.website || "");
+    const [technicalFindings, performanceFindings] = await Promise.all([
+      TechnicalAgent.audit(lead?.website || ""),
+      PerformanceAgent.audit(lead?.website || "")
+    ]);
 
-    // 4. Consolidation & Proof Gate
+    // 4. Copy Layer (Requires content from Vision Results if possible)
+    const copyFindings = await CopyAgent.analyze(lead?.website || "", "Demo content...");
+
+    // 5. Consolidation & Proof Gate
     const audit = await prisma.websiteAudit.findFirst({
       where: { leadId },
       orderBy: { createdAt: "desc" }
@@ -63,7 +71,36 @@ export class AuditOrchestrator {
         confidence: tech.confidence,
         sourceEngine: "technical",
         businessImpact: tech.businessImpact,
-        status: "APPROVED" // Technical is deterministic, so approved by default
+        status: "APPROVED" 
+      });
+    }
+
+    // Process Performance Findings
+    for (const perf of performanceFindings) {
+      finalFindings.push({
+        auditId: audit.id,
+        title: perf.metric,
+        category: "performance",
+        confidence: 0.98,
+        sourceEngine: "performance",
+        businessImpact: perf.businessImpact,
+        outreachHook: perf.hook,
+        status: "APPROVED"
+      });
+    }
+
+    // Process Copy Findings
+    for (const copy of copyFindings) {
+      finalFindings.push({
+        auditId: audit.id,
+        title: copy.title,
+        category: "copy",
+        confidence: 0.82,
+        sourceEngine: "copy",
+        businessImpact: copy.businessImpact,
+        fixSuggestion: copy.fixSuggestion,
+        outreachHook: copy.outreachHook,
+        status: "NEEDS_REVIEW"
       });
     }
 

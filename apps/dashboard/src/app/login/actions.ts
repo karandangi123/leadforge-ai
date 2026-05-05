@@ -6,7 +6,7 @@ import { redirect } from "next/navigation";
 
 export async function signInWithGoogle() {
   try {
-    await signIn("google", { redirectTo: "/" });
+    await signIn("google", { redirectTo: "/war-room" });
   } catch (error) {
     if (error instanceof AuthError) {
       redirect(`/login?error=${encodeURIComponent(error.type)}`);
@@ -17,7 +17,7 @@ export async function signInWithGoogle() {
 
 export async function signInDemo() {
   try {
-    await signIn("demo", { redirectTo: "/" });
+    await signIn("demo", { redirectTo: "/war-room" });
   } catch (error) {
     if (error instanceof AuthError) {
       redirect(`/login?error=${encodeURIComponent(error.type)}`);

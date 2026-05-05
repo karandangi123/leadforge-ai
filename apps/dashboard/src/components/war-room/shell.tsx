@@ -33,12 +33,7 @@ function Sidebar() {
   const pathname = usePathname();
   
   const navItems = [
-    { icon: LayoutDashboard, label: "Overview", href: "/dashboard" },
     { icon: Radar, label: "War Room", href: "/war-room" },
-    { icon: Target, label: "Approvals", href: "/approvals" },
-    { icon: Activity, label: "Activity", href: "/activity" },
-    { icon: Shield, label: "Security", href: "/security" },
-    { icon: Settings, label: "Settings", href: "/settings" },
   ];
 
   return (

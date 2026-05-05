@@ -75,3 +75,4 @@ tmp/
 *.db-journal
 *.sqlite
 .env*.local
+.env.vercel-production

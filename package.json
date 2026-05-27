@@ -26,5 +26,18 @@
     "tsx": "^4.20.6",
     "turbo": "^2.0.0"
   },
-  "dependencies": {}
+  "dependencies": {},
+  "overrides": {
+    "postcss": "^8.5.12",
+    "tar-fs": "^3.1.2",
+    "@hono/node-server": "^1.19.13",
+    "next": {
+      "postcss": "^8.5.12"
+    },
+    "playwright-aws-lambda": {
+      "lambdafs": {
+        "tar-fs": "^3.1.2"
+      }
+    }
+  }
 }

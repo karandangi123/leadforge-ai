@@ -4,6 +4,7 @@ import { getPrisma } from "@leadforge/db";
 import IORedis from "ioredis";
 
 const REDIS_URL = process.env.UPSTASH_REDIS_URL || "redis://localhost:6379";
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const connection = new IORedis(REDIS_URL, { maxRetriesPerRequest: null }) as any;
 
 export const visionQueue = new Queue("vision-audit", { connection });

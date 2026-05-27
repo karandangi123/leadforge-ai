@@ -27,6 +27,7 @@ export function getQueueConnection() {
     });
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return globalForQueues.aiJobRedis as any;
 }
 

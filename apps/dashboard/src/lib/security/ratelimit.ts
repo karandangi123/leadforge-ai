@@ -10,6 +10,7 @@ interface MockRateLimiter {
 }
 
 function createRateLimiter(options: {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   limiter: any;
   prefix: string;
   analytics?: boolean;

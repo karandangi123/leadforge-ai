@@ -121,6 +121,7 @@ export async function logAudit(
   action: string,
   entityType: string,
   entityId?: string,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   metadata: any = {},
 ) {
   const session = await auth();

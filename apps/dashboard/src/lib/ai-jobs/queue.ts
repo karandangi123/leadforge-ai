@@ -27,7 +27,7 @@ export function getQueueConnection() {
     });
   }
 
-  return globalForQueues.aiJobRedis;
+  return globalForQueues.aiJobRedis as any;
 }
 
 export function getAiJobQueue() {
@@ -46,7 +46,7 @@ export function getAiJobQueue() {
     });
   }
 
-  return globalForQueues.aiJobQueue;
+  return globalForQueues.aiJobQueue!;
 }
 
 export async function enqueueAsyncJob(jobId: string) {

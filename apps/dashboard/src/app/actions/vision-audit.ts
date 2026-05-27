@@ -4,21 +4,37 @@ import { revalidatePath } from "next/cache";
 import { visionQueue } from "@/lib/ai-jobs/vision-worker";
 import { getPrisma } from "@leadforge/db";
 import { getActiveWorkspace } from "@/lib/workspace";
+import { ForensicEngine } from "@/lib/forensic-engine";
+import { validatePublicUrl } from "@/lib/security/url-validator";
+import { forensicAuditLimiter } from "@/lib/security/ratelimit";
+import { z } from "zod";
+
+const IdSchema = z.string().min(1);
+const UrlSchema = z.string().min(3);
 
 /**
  * Triggers an asynchronous visual audit via BullMQ
  */
-export async function runVisionAudit(leadId: string) {
+export async function runVisionAudit(rawLeadId: string) {
+  const leadId = IdSchema.parse(rawLeadId);
   const prisma = getPrisma();
   
   try {
+    // 0. Rate Limit Protection
+    const { success } = await forensicAuditLimiter.limit(`audit:${leadId}`);
+    if (!success) throw new Error("Rate limit exceeded. Please wait before auditing again.");
+
     // 1. Check for existing hung audits (Recovery Logic)
     const existingLead = await prisma.lead.findUnique({
       where: { id: leadId },
-      select: { status: true, workspaceId: true }
+      select: { status: true, workspaceId: true, website: true }
     });
 
     if (!existingLead) throw new Error("Lead target not found in perimeter.");
+    if (!existingLead.website) throw new Error("Lead has no valid website to audit.");
+
+    // 1.5 Validate URL (SSRF Protection)
+    await validatePublicUrl(existingLead.website);
 
     // 2. Clear previous audit state if retrying
     await prisma.websiteAudit.deleteMany({
@@ -91,7 +107,8 @@ export async function runVisionAudit(leadId: string) {
 /**
  * Polling endpoint for the War Room UI to track real-time progress
  */
-export async function getVisionJobStatus(trackingId: string) {
+export async function getVisionJobStatus(rawTrackingId: string) {
+  const trackingId = IdSchema.parse(rawTrackingId);
   const prisma = getPrisma();
   
   try {
@@ -105,9 +122,9 @@ export async function getVisionJobStatus(trackingId: string) {
     // Self-Healing: If job is QUEUED for too long, trigger a Simulation
     const isHung = job.status === "QUEUED" && (Date.now() - job.createdAt.getTime() > 15000);
     if (isHung && job.leadId) {
-      console.warn("⚠️ [VisionAudit] Job hung in queue. Activating Forensic Simulation.");
-      await triggerForensicSimulation(trackingId, job.leadId);
-      return { status: "COMPLETED", step: "Forensic Simulation Finalized." };
+      console.warn("⚠️ [VisionAudit] Job hung in queue. Activating Real Forensic Audit.");
+      await triggerRealForensicAudit(trackingId, job.leadId);
+      return { status: "COMPLETED", step: "Real Forensic Audit Finalized." };
     }
 
     return {
@@ -121,111 +138,147 @@ export async function getVisionJobStatus(trackingId: string) {
 }
 
 /**
- * Triggers a high-fidelity forensic simulation for serverless environments
+ * Triggers a real forensic audit using Firecrawl + Groq
  */
-async function triggerForensicSimulation(jobId: string, leadId: string) {
+async function triggerRealForensicAudit(jobId: string, leadId: string) {
   const prisma = getPrisma();
+  const engine = new ForensicEngine();
   
-  // 1. Update Job
-  await prisma.asyncJob.update({
-    where: { id: jobId },
-    data: { 
-      status: "SUCCEEDED", 
-      progress: 100,
-      events: { create: { status: "SUCCEEDED", message: "Forensic Simulation Generated." } }
-    }
-  });
+  try {
+    // 1. Get Lead Details
+    const lead = await prisma.lead.findUnique({
+      where: { id: leadId }
+    });
 
-  // 3. Create High-Fidelity Proof Packages (Failure 1 & 2 Mitigation)
-  const audit = await prisma.websiteAudit.create({
-    data: { 
-      leadId, 
-      status: "SUCCEEDED",
-      overallScore: 85,
-      businessImpact: "LCP latency is currently hitting 2.8s, which exceeds Google's recommended threshold and likely impacts search ranking.",
-      readyToSendMessage: "Noticed your site has some LCP latency (2.8s)—thought you'd want to see the exact hero assets causing the bloat.",
-      confidence: 0.98
+    if (!lead || !lead.website) {
+      throw new Error("Lead website not found.");
     }
-  });
 
-  await prisma.auditFinding.createMany({
-    data: [
-      {
-        auditId: audit.id,
-        title: "LCP Optimization Needed",
-        category: "performance",
-        confidence: 0.95,
-        sourceEngine: "performance",
-        businessImpact: "Slow main content loading reduces mobile visitor retention.",
-        fixSuggestion: "Compress hero assets.",
-        outreachHook: "Noticed your mobile page takes too long to reveal the main CTA.",
-        status: "APPROVED"
-      },
-      {
-        auditId: audit.id,
-        title: "Missing Security Headers (CSP)",
-        category: "technical",
-        confidence: 0.99,
-        sourceEngine: "technical",
-        businessImpact: "Vulnerability to cross-site scripting (XSS) attacks.",
-        fixSuggestion: "Add Content-Security-Policy header.",
-        outreachHook: "Your site is missing the CSP security header, which is a key signal for enterprise trust.",
-        status: "APPROVED"
+    // 2. Update Job to CRAWLING
+    await prisma.asyncJob.update({
+      where: { id: jobId },
+      data: { 
+        status: "RUNNING", 
+        progress: 20,
+        events: { create: { status: "RUNNING", message: "Engaging Firecrawl Forensic Engine..." } }
       }
-    ]
-  });
+    });
 
-  // 4. Create Mock Screenshot
-  await prisma.websiteScreenshot.create({
-    data: {
-      auditId: audit.id,
-      viewport: "desktop",
-      pageType: "home",
-      imageUrl: "https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&q=80&w=2426",
-      score: 85
+    // 3. Perform Real Audit
+    const result = await engine.performAudit(lead.website);
+
+    // 4. Create Audit Record
+    const audit = await prisma.websiteAudit.create({
+      data: { 
+        leadId, 
+        status: "SUCCEEDED",
+        overallScore: result.uxScore,
+        businessImpact: result.summary,
+        readyToSendMessage: result.findings[0]?.outreach_hook || "Check out your site's forensic audit.",
+        confidence: result.findings[0]?.confidence || 0.8,
+        completedAt: new Date()
+      }
+    });
+
+    // 5. Create Real Findings
+    if (result.findings.length > 0) {
+      await prisma.auditFinding.createMany({
+        data: result.findings.map(f => ({
+          auditId: audit.id,
+          title: f.title,
+          category: f.category.toLowerCase(),
+          confidence: f.confidence,
+          x: f.x,
+          y: f.y,
+          sourceEngine: "forensic_engine",
+          businessImpact: f.business_impact,
+          fixSuggestion: f.recommendation,
+          outreachHook: f.outreach_hook,
+          whyThisFinding: f.why_this_finding,
+          detectionConfidence: f.detection_confidence,
+          evidenceStrength: f.evidence_strength,
+          businessImpactScore: f.business_impact_score,
+          outreachQualityScore: f.outreach_quality_score,
+          overallSendability: (f.detection_confidence + f.evidence_strength + f.business_impact_score + f.outreach_quality_score) / 4,
+          status: "APPROVED"
+        }))
+      });
     }
-  });
 
-  // 4. Update Lead & Audit with Proof Card Data
-  const businessImpact = `This site's LCP (Largest Contentful Paint) is above 2.5s, which directly triggers a 'Poor' URL rating from Google. This is likely reducing search visibility by 15-20% compared to competitors.`;
-  const readyToSendMessage = `Hey,\n\nI was just looking at your homepage and noticed your LCP is lagging quite a bit (screenshot attached). Google's latest core web vitals update is hitting sites with this exact issue. I found the specific hero asset that's causing the bloat. Worth a quick fix?`;
-
-  await prisma.websiteAudit.update({
-    where: { id: audit.id },
-    data: {
-      businessImpact,
-      readyToSendMessage,
-      confidence: 0.98,
-      status: "SUCCEEDED",
-      completedAt: new Date()
+    // 6. Create Screenshot Record
+    if (result.screenshotUrl) {
+      await prisma.websiteScreenshot.create({
+        data: {
+          auditId: audit.id,
+          viewport: "desktop",
+          pageType: "home",
+          imageUrl: result.screenshotUrl,
+          score: result.uxScore
+        }
+      });
     }
-  });
 
-  await prisma.lead.update({
-    where: { id: leadId },
-    data: { status: "READY", auditScore: 85 }
-  });
+    // 7. Update Job to SUCCESS
+    await prisma.asyncJob.update({
+      where: { id: jobId },
+      data: { 
+        status: "SUCCEEDED", 
+        progress: 100,
+        events: { create: { status: "SUCCEEDED", message: "Forensic analysis finalized with real data." } }
+      }
+    });
+
+    // 8. Update Lead
+    await prisma.lead.update({
+      where: { id: leadId },
+      data: { status: "READY", auditScore: result.uxScore }
+    });
+
+  } catch (error: any) {
+    console.error("❌ [ForensicAudit] Real audit failed:", error);
+    
+    // Fail the job gracefully
+    await prisma.asyncJob.update({
+      where: { id: jobId },
+      data: { 
+        status: "FAILED", 
+        progress: 100,
+        events: { create: { status: "FAILED", message: `Audit failed: ${error.message}` } }
+      }
+    });
+
+    await prisma.lead.update({
+      where: { id: leadId },
+      data: { status: "NEW" }
+    });
+  }
 }
 
 /**
  * Fast Ingest: Create lead and start audit in one click
  */
-export async function fastAudit(url: string) {
+export async function fastAudit(rawUrl: string) {
+  const url = UrlSchema.parse(rawUrl);
   const prisma = getPrisma();
   
   try {
     // 1. Get Active Workspace
     const workspace = await getActiveWorkspace();
 
-    // 2. Sanitize URL
-    const domain = url.replace('https://', '').replace('http://', '').split('/')[0];
+    // 1.5 Rate Limit Protection (per workspace)
+    const { success } = await forensicAuditLimiter.limit(`workspace:${workspace.id}`);
+    if (!success) throw new Error("Too many audits initiated. Please slow down.");
+
+    // 2. Sanitize & Validate URL
+    const validatedUrl = await validatePublicUrl(url);
+    const domain = validatedUrl.replace('https://', '').replace('http://', '').split('/')[0];
     const companyName = domain.split('.')[0].toUpperCase();
 
     // 3. Create Lead
     const lead = await prisma.lead.create({
       data: {
         company: companyName,
-        website: url,
+        website: validatedUrl,
         status: "NEW",
         workspaceId: workspace.id,
         source: "fast_ingest"
@@ -258,7 +311,9 @@ export async function fastAudit(url: string) {
 /**
  * Stop/Cancel an ongoing audit
  */
-export async function cancelVisionAudit(trackingId: string, leadId: string) {
+export async function cancelVisionAudit(rawTrackingId: string, rawLeadId: string) {
+  const trackingId = IdSchema.parse(rawTrackingId);
+  const leadId = IdSchema.parse(rawLeadId);
   const prisma = getPrisma();
   
   try {

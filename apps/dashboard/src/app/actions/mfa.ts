@@ -4,6 +4,7 @@ import { auth } from "@/auth";
 import { generateMfaSecret, verifyMfaToken, enableMfaForUser, disableMfaForUser } from "@/lib/mfa";
 import { revalidatePath } from "next/cache";
 import { SecurityService } from "@/lib/security";
+import { z } from "zod";
 
 /**
  * Initiates the MFA setup process
@@ -21,7 +22,9 @@ export async function startMfaSetup() {
 /**
  * Completes the MFA setup by verifying the first token
  */
-export async function completeMfaSetup(secret: string, token: string) {
+export async function completeMfaSetup(rawSecret: string, rawToken: string) {
+  const secret = z.string().min(1).parse(rawSecret);
+  const token = z.string().min(6).max(8).parse(rawToken);
   const session = await auth();
   if (!session?.user?.id) throw new Error("Unauthorized");
 

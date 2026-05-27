@@ -3,6 +3,15 @@
 import { getPrisma } from "@leadforge/db";
 import { getActiveWorkspace } from "@/lib/workspace";
 import { BriefSynthesisAgent } from "@leadforge/agents";
+import { z } from "zod";
+
+const IdSchema = z.string().min(1);
+const FindingUpdateSchema = z.object({
+  status: z.string().optional(),
+  outreachHook: z.string().optional(),
+  severity: z.string().optional(),
+  humanNotes: z.string().optional(),
+});
 
 export async function getWarRoomLeads() {
   const prisma = getPrisma();
@@ -64,7 +73,18 @@ export async function getWarRoomLeads() {
   return enrichedLeads;
 }
 
-export async function getLeadSynthesis(leadId: string) {
+export async function getLeadSynthesis(rawLeadId: string) {
+  const leadId = IdSchema.parse(rawLeadId);
+  const prisma = getPrisma();
+  const workspace = await getActiveWorkspace();
+
+  // 1. Ownership Check
+  const lead = await prisma.lead.findFirst({
+    where: { id: leadId, workspaceId: workspace.id }
+  });
+
+  if (!lead) return null;
+
   try {
     const synthesis = await BriefSynthesisAgent.synthesize(leadId);
     return synthesis.data;
@@ -74,9 +94,22 @@ export async function getLeadSynthesis(leadId: string) {
   }
 }
 
-export async function getLeadForensicData(leadId: string) {
+export async function getLeadForensicData(rawLeadId: string) {
+  const leadId = IdSchema.parse(rawLeadId);
   const prisma = getPrisma();
   
+  const workspace = await getActiveWorkspace();
+
+  // 1. Explicit Lead Ownership Check
+  const leadExistsInWorkspace = await prisma.lead.findFirst({
+    where: { id: leadId, workspaceId: workspace.id }
+  });
+
+  if (!leadExistsInWorkspace) {
+    console.error(`🛑 [Security] Unauthorized forensic data access attempt for lead ${leadId} in workspace ${workspace.id}`);
+    return null;
+  }
+
   const audit = await prisma.websiteAudit.findFirst({
     where: { leadId },
     orderBy: { createdAt: "desc" },
@@ -131,10 +164,19 @@ export async function getLeadForensicData(leadId: string) {
 /**
  * Delete a lead and all associated audit data from the War Room
  */
-export async function deleteWarRoomLead(leadId: string) {
+export async function deleteWarRoomLead(rawLeadId: string) {
+  const leadId = IdSchema.parse(rawLeadId);
   const prisma = getPrisma();
+  const workspace = await getActiveWorkspace();
   
   try {
+    // 1. Verify Ownership
+    const lead = await prisma.lead.findFirst({
+      where: { id: leadId, workspaceId: workspace.id }
+    });
+
+    if (!lead) throw new Error("Unauthorized deletion attempt.");
+
     await prisma.$transaction([
       prisma.websiteAudit.deleteMany({ where: { leadId } }),
       prisma.asyncJob.deleteMany({ where: { leadId } }),
@@ -172,7 +214,8 @@ export async function cleanupHungAudits() {
     return { success: false };
   }
 }
-export async function exportLeadToHubSpot(leadId: string) {
+export async function exportLeadToHubSpot(rawLeadId: string) {
+  const leadId = IdSchema.parse(rawLeadId);
   const prisma = getPrisma();
   
   try {
@@ -258,15 +301,23 @@ export async function exportLeadsToCSV() {
 /**
  * Update a specific forensic finding (Approve, Edit, Reject)
  */
-export async function updateFinding(findingId: string, data: {
-  status?: string;
-  outreachHook?: string;
-  severity?: string;
-  humanNotes?: string;
-}) {
+export async function updateFinding(rawFindingId: string, rawData: z.infer<typeof FindingUpdateSchema>) {
+  const findingId = IdSchema.parse(rawFindingId);
+  const data = FindingUpdateSchema.parse(rawData);
   const prisma = getPrisma();
+  const workspace = await getActiveWorkspace();
   
   try {
+    // 1. Verify Ownership via Lead -> Workspace
+    const finding = await prisma.auditFinding.findFirst({
+      where: { 
+        id: findingId,
+        audit: { lead: { workspaceId: workspace.id } }
+      }
+    });
+
+    if (!finding) throw new Error("Unauthorized finding update.");
+
     const updated = await prisma.auditFinding.update({
       where: { id: findingId },
       data

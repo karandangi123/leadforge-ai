@@ -22,11 +22,8 @@ export const { handlers, auth, signIn, signOut, unstable_update } = NextAuth({
         token.mfaVerified = true;
       }
 
-      if (account) {
-        token.accessToken = account.access_token;
-        token.refreshToken = account.refresh_token;
-        token.expiresAt = account.expires_at;
-      }
+      // Note: We don't store raw tokens in the JWT to prevent leakage to the browser.
+      // Tokens are stored in the database during the signIn event.
       return token;
     },
     async session({ session, token }) {

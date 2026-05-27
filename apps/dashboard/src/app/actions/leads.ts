@@ -3,6 +3,21 @@
 import { getPrisma, LeadStatus } from "@leadforge/db";
 import { getActiveWorkspace } from "@/lib/workspace";
 import { revalidatePath } from "next/cache";
+import { z } from "zod";
+
+const IdSchema = z.string().min(1);
+const LeadStatusEnum = z.enum(["NEW", "RESEARCH", "AUDIT", "DRAFTED", "APPROVAL", "READY", "SYNCED", "REJECTED"]);
+
+const LeadCreateSchema = z.object({
+  company: z.string().min(1),
+  website: z.string().min(3),
+  contactName: z.string().optional(),
+  contactEmail: z.string().email().optional().or(z.literal("")),
+  segment: z.string().optional(),
+  ownerName: z.string().optional(),
+  tags: z.array(z.string()).optional(),
+  notes: z.string().optional(),
+});
 
 /**
  * Fetch all leads for the active workspace with basic enrichment profiles
@@ -29,7 +44,9 @@ export async function getLeads() {
 /**
  * Update lead status manually (e.g. Reject, Approve, Mark as Research)
  */
-export async function updateLeadStatus(leadId: string, status: LeadStatus) {
+export async function updateLeadStatus(rawLeadId: string, rawStatus: string) {
+  const leadId = IdSchema.parse(rawLeadId);
+  const status = LeadStatusEnum.parse(rawStatus) as LeadStatus;
   const prisma = getPrisma();
   
   try {
@@ -48,7 +65,13 @@ export async function updateLeadStatus(leadId: string, status: LeadStatus) {
 /**
  * Bulk delete or archive leads
  */
-export async function bulkUpdateLeads(leadIds: string[], data: Partial<{ status: LeadStatus; ownerName: string; segment: string }>) {
+export async function bulkUpdateLeads(rawLeadIds: string[], rawData: any) {
+  const leadIds = z.array(IdSchema).parse(rawLeadIds);
+  const data = z.object({
+    status: LeadStatusEnum.optional(),
+    ownerName: z.string().optional(),
+    segment: z.string().optional(),
+  }).parse(rawData);
   const prisma = getPrisma();
 
   try {
@@ -67,18 +90,18 @@ export async function bulkUpdateLeads(leadIds: string[], data: Partial<{ status:
 /**
  * Move a lead to a new stage (Supports both direct call and Form Action)
  */
-export async function moveLeadStage(leadIdOrFormData: string | FormData, status?: LeadStatus) {
+export async function moveLeadStage(leadIdOrFormData: string | FormData, status?: string) {
   const prisma = getPrisma();
   let id: string;
   let newStatus: LeadStatus;
 
   if (leadIdOrFormData instanceof FormData) {
-    id = leadIdOrFormData.get("leadId") as string;
-    newStatus = (leadIdOrFormData.get("status") as string) as LeadStatus;
+    id = IdSchema.parse(leadIdOrFormData.get("leadId"));
+    newStatus = LeadStatusEnum.parse(leadIdOrFormData.get("status")) as LeadStatus;
   } else {
-    id = leadIdOrFormData;
+    id = IdSchema.parse(leadIdOrFormData);
     if (!status) throw new Error("Status is required for stage movement");
-    newStatus = status;
+    newStatus = LeadStatusEnum.parse(status) as LeadStatus;
   }
   
   try {
@@ -99,28 +122,30 @@ export async function moveLeadStage(leadIdOrFormData: string | FormData, status?
 /**
  * Add a new lead manually (Supports both direct call and Form Action)
  */
-export async function addLead(dataOrFormData: Partial<{ company: string; website: string; contactName: string; contactEmail: string; segment: string; ownerName: string; tags: string[]; notes: string }> | FormData) {
+export async function addLead(dataOrFormData: any) {
   const prisma = getPrisma();
   const workspace = await getActiveWorkspace();
-  let data: any;
+  let rawData: any;
 
   if (dataOrFormData instanceof FormData) {
-    data = {
-      company: dataOrFormData.get("company") as string,
-      website: dataOrFormData.get("website") as string,
-      contactName: dataOrFormData.get("contactName") as string,
-      contactEmail: dataOrFormData.get("contactEmail") as string,
-      segment: dataOrFormData.get("segment") as string,
-      ownerName: dataOrFormData.get("ownerName") as string,
+    rawData = {
+      company: dataOrFormData.get("company"),
+      website: dataOrFormData.get("website"),
+      contactName: dataOrFormData.get("contactName"),
+      contactEmail: dataOrFormData.get("contactEmail"),
+      segment: dataOrFormData.get("segment"),
+      ownerName: dataOrFormData.get("ownerName"),
       tags: (dataOrFormData.get("tags") as string)?.split(',').map(t => t.trim()).filter(Boolean) || [],
-      notes: dataOrFormData.get("notes") as string,
+      notes: dataOrFormData.get("notes"),
     };
   } else {
-    data = dataOrFormData;
+    rawData = dataOrFormData;
   }
 
+  const data = LeadCreateSchema.parse(rawData);
+
   try {
-    const lead = await prisma.lead.create({
+    await prisma.lead.create({
       data: {
         ...data,
         workspaceId: workspace.id,
@@ -129,9 +154,6 @@ export async function addLead(dataOrFormData: Partial<{ company: string; website
     });
     revalidatePath("/leads");
     revalidatePath("/dashboard");
-    
-    
-    
   } catch (error) {
     console.error("[LeadsAction] Add lead failed", error);
   }
@@ -214,8 +236,8 @@ export async function createSampleLead(formData: FormData) {
  */
 export async function recordLeadOutcome(formData: FormData) {
   const prisma = getPrisma();
-  const leadId = formData.get("leadId") as string;
-  const eventType = formData.get("eventType") as string;
+  const leadId = IdSchema.parse(formData.get("leadId"));
+  const eventType = z.string().min(1).parse(formData.get("eventType"));
 
   try {
     await prisma.outcomeEvent.create({

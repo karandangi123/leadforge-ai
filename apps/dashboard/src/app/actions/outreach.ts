@@ -4,11 +4,26 @@ import { getPrisma } from "@leadforge/db";
 import { SequenceHealerAgent, OutreachAgent } from "@leadforge/agents";
 import { revalidatePath } from "next/cache";
 import { createGmailDraftFromConnection, TokenCrypto } from "@leadforge/integrations";
+import { z } from "zod";
+
+const IdSchema = z.string().min(1);
+const DraftSchema = z.object({
+  leadId: z.string().min(1),
+  subject: z.string().min(1),
+  body: z.string().min(1),
+  to: z.string().email(),
+});
 
 /**
  * Server Action: Create a Gmail draft for a specific lead
  */
-export async function createGmailDraft(leadId: string, subject: string, body: string, to: string) {
+export async function createGmailDraft(rawLeadId: string, rawSubject: string, rawBody: string, rawTo: string) {
+  const { leadId, subject, body, to } = DraftSchema.parse({
+    leadId: rawLeadId,
+    subject: rawSubject,
+    body: rawBody,
+    to: rawTo
+  });
   const prisma = getPrisma();
   
   try {
@@ -55,7 +70,9 @@ export async function createGmailDraft(leadId: string, subject: string, body: st
     return { success: false, error: error.message || "Failed to create draft" };
   }
 }
-export async function processLeadReply(leadId: string, replyText: string) {
+export async function processLeadReply(rawLeadId: string, rawReplyText: string) {
+  const leadId = IdSchema.parse(rawLeadId);
+  const replyText = z.string().min(1).parse(rawReplyText);
   const prisma = getPrisma();
   
   try {
@@ -74,7 +91,8 @@ export async function processLeadReply(leadId: string, replyText: string) {
 /**
  * Server Action: Generate a 3-step Context-Aware Sequence based on Live Audit
  */
-export async function generateContextAwareSequence(leadId: string) {
+export async function generateContextAwareSequence(rawLeadId: string) {
+  const leadId = IdSchema.parse(rawLeadId);
   try {
     const steps = await Promise.all([
       OutreachAgent.generateContextAwareDraft(leadId, 1),

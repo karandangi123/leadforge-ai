@@ -7,6 +7,7 @@ import { executeAsyncJobById } from "./executor";
 import { enqueueAsyncJob } from "./queue";
 import { getCompletedRunKey, getQueuedRunKey } from "./types";
 import { getAiRuntimeMode, hasRedisUrl } from "../runtime-mode";
+import { z } from "zod";
 
 export async function runLeadAsyncJob(formData: FormData, kind: JobKind) {
   const leadId = readLeadId(formData);
@@ -66,8 +67,5 @@ export async function runLeadAsyncJob(formData: FormData, kind: JobKind) {
 
 function readLeadId(formData: FormData) {
   const leadId = formData.get("leadId");
-  if (typeof leadId !== "string" || leadId.length < 2) {
-    redirect("/?lead=invalid#dashboard");
-  }
-  return leadId;
+  return z.string().min(1).parse(leadId);
 }

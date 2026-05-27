@@ -157,18 +157,12 @@ export async function editApprovalAsset(formData: FormData) {
 
 function readLeadId(formData: FormData) {
   const leadId = formData.get("leadId");
-  if (typeof leadId !== "string" || leadId.length < 2) {
-    redirect("/?lead=invalid#dashboard");
-  }
-  return leadId;
+  return z.string().min(1).parse(leadId);
 }
 
 function readApprovalId(formData: FormData) {
   const approvalId = formData.get("approvalId");
-  if (typeof approvalId !== "string" || approvalId.length < 2) {
-    redirect("/?lead=invalid#dashboard");
-  }
-  return approvalId;
+  return z.string().min(1).parse(approvalId);
 }
 
 function appendReviewNote(current: string | null, next: string) {

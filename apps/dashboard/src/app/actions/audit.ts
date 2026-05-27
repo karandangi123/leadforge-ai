@@ -1,11 +1,13 @@
 "use server";
 
 import { getPrisma } from "@leadforge/db";
+import { z } from "zod";
 
 /**
  * Fetch public audit data for the Lead Portal
  */
-export async function getPublicAudit(auditId: string) {
+export async function getPublicAudit(rawAuditId: string) {
+  const auditId = z.string().min(1).parse(rawAuditId);
   const prisma = getPrisma();
   
   try {

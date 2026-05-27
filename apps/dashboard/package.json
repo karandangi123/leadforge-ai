@@ -8,7 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
-    "test:e2e": "playwright test",
+    "test:e2e": "UPSTASH_REDIS_URL= REDIS_URL= playwright test",
     "test:jobs": "tsx --test src/lib/ai-jobs/*.test.ts src/lib/*.test.ts"
   },
   "dependencies": {
@@ -17,10 +17,14 @@
     "@leadforge/db": "*",
     "@leadforge/evals": "*",
     "@leadforge/integrations": "*",
+    "@mendable/firecrawl-js": "^4.21.0",
     "@react-pdf/renderer": "^4.5.1",
+    "@upstash/ratelimit": "^2.0.8",
+    "@upstash/redis": "^1.38.0",
     "bullmq": "^5.61.0",
     "framer-motion": "^12.38.0",
     "googleapis": "^171.4.0",
+    "groq-sdk": "^1.1.2",
     "ioredis": "^5.8.0",
     "lucide-react": "^1.14.0",
     "next": "16.2.4",
@@ -32,7 +36,7 @@
     "react-dom": "19.2.4",
     "recharts": "^3.8.1",
     "sonner": "^1.7.0",
-    "zod": "^4.3.6"
+    "zod": "^4.4.1"
   },
   "devDependencies": {
     "@playwright/test": "^1.59.1",

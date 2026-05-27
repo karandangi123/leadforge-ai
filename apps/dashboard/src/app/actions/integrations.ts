@@ -3,10 +3,13 @@
 import { revalidatePath } from "next/cache";
 import { redirect, unstable_rethrow } from "next/navigation";
 import { getPrisma, hasDatabaseUrl } from "@leadforge/db";
+import { z } from "zod";
+
+const IdSchema = z.string().min(1);
 
 export async function syncLeadToExternal(formData: FormData) {
-  const leadId = String(formData.get("leadId") ?? "");
-  const syncId = String(formData.get("syncId") ?? "");
+  const leadId = IdSchema.parse(formData.get("leadId"));
+  const syncId = IdSchema.parse(formData.get("syncId"));
 
   if (!hasDatabaseUrl()) {
     redirect(`/leads/${leadId}?run=db-not-configured`);
@@ -76,8 +79,8 @@ export async function syncLeadToExternal(formData: FormData) {
  */
 export async function createRealGmailDraft(formData: FormData) {
   const prisma = getPrisma();
-  const leadId = formData.get("leadId") as string;
-  const outreachId = formData.get("outreachId") as string;
+  const leadId = IdSchema.parse(formData.get("leadId"));
+  const outreachId = IdSchema.parse(formData.get("outreachId"));
 
   try {
     // Note: Actual Gmail API integration happens in the background worker

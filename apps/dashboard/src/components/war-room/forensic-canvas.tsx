@@ -31,7 +31,7 @@ export function ForensicCanvas({ imageUrl, findings, activeFindingIdx, onFinding
   const [viewport, setViewport] = useState<"desktop" | "mobile">("desktop");
 
   return (
-    <div className="flex-1 flex flex-col bg-obsidian overflow-hidden">
+    <div className="flex-1 flex flex-col bg-obsidian overflow-hidden print:bg-white print:overflow-visible">
       {/* Canvas Header */}
       <div className="h-14 border-b border-steel px-6 flex items-center justify-between forensic-glass">
         <div className="flex items-center gap-4">
@@ -74,9 +74,9 @@ export function ForensicCanvas({ imageUrl, findings, activeFindingIdx, onFinding
       </div>
 
       {/* The Workspace */}
-      <div className="flex-1 relative overflow-auto p-12 scrollbar-hide bg-[radial-gradient(#1c1c1f_1px,transparent_1px)] [background-size:20px_20px]">
+      <div className="flex-1 relative overflow-auto p-12 scrollbar-hide bg-[radial-gradient(#1c1c1f_1px,transparent_1px)] [background-size:20px_20px] print:p-0 print:bg-none print:overflow-visible">
         <div 
-          className="relative mx-auto transition-all duration-500 command-shadow rounded-[2rem] overflow-hidden bg-black"
+          className="relative mx-auto transition-all duration-500 command-shadow rounded-[2rem] overflow-hidden bg-black print:rounded-none print:shadow-none print:transform-none print:w-full print:max-w-none"
           style={{ 
             width: viewport === "desktop" ? "100%" : "375px",
             maxWidth: viewport === "desktop" ? "1200px" : "375px",
@@ -124,20 +124,20 @@ export function ForensicCanvas({ imageUrl, findings, activeFindingIdx, onFinding
                     filter="url(#glow)"
                   />
 
-                  {/* Label (Visible on Active/Hover) */}
+                  {/* Label (Visible on Active/Hover OR during print for all findings if needed, but let's keep it clean) */}
                   <AnimatePresence>
-                    {isActive && (
+                    {(isActive) && (
                       <foreignObject x={`${f.x}%`} y={`${f.y}%`} width="200" height="100" className="overflow-visible">
                         <motion.div 
                           initial={{ opacity: 0, y: 10, x: 20 }}
                           animate={{ opacity: 1, y: -20, x: 20 }}
-                          className="forensic-glass p-3 rounded-xl border border-leadforge-blue/30 shadow-2xl min-w-[180px]"
+                          className="forensic-glass p-3 rounded-xl border border-leadforge-blue/30 shadow-2xl min-w-[180px] print:bg-white print:border-leadforge-blue print:shadow-none print:text-black"
                         >
                           <div className="flex items-center gap-2 mb-1">
-                            <div className="w-1.5 h-1.5 rounded-full bg-leadforge-blue shadow-[0_0_8px_rgba(59,130,246,1)]" />
+                            <div className="w-1.5 h-1.5 rounded-full bg-leadforge-blue shadow-[0_0_8px_rgba(59,130,246,1)] print:shadow-none" />
                             <span className="text-[9px] font-black uppercase tracking-widest text-leadforge-blue">Marker ID: {f.id.slice(-4)}</span>
                           </div>
-                          <p className="text-[11px] font-bold text-white leading-tight">{f.finding}</p>
+                          <p className="text-[11px] font-bold text-white leading-tight print:text-black">{f.finding}</p>
                         </motion.div>
                       </foreignObject>
                     )}

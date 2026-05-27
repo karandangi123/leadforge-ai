@@ -137,23 +137,73 @@ html {
 }
 
 @media print {
-  body {
-    background: white;
+  @page {
+    size: A4;
+    margin: 1cm;
   }
 
-  .proposal-no-print,
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+    font-size: 10pt;
+  }
+
+  /* Hide UI elements that aren't needed in a PDF report */
+  nav, 
+  aside, 
   header,
-  nav {
+  button,
+  .no-print,
+  .top-search-bar,
+  .sidebar-toggle,
+  [role="tablist"] {
     display: none !important;
   }
 
-  .proposal-print-root {
-    padding: 0;
+  /* Reset layout for full page width */
+  main,
+  .war-room-container {
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    max-width: none !important;
+    display: block !important;
+  }
+
+  /* Style the forensic evidence for high-quality export */
+  .forensic-report-card {
+    break-inside: avoid;
+    page-break-inside: avoid;
+    border: 1px solid #e2e8f0 !important;
+    box-shadow: none !important;
+    background: white !important;
+    margin-bottom: 2rem !important;
+    padding: 2rem !important;
+  }
+
+  .forensic-title {
+    font-size: 24pt !important;
+    font-weight: 800 !important;
+    color: #0f172a !important;
+    margin-bottom: 1rem !important;
+  }
+
+  .forensic-screenshot {
+    max-width: 100% !important;
+    height: auto !important;
+    border-radius: 8px !important;
+    border: 1px solid #cbd5e1 !important;
+  }
+
+  /* Force display of background images/colors if they are important */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
 
   .proposal-page-break {
-    break-inside: avoid;
-    page-break-inside: avoid;
+    page-break-before: always;
+    break-before: page;
   }
 }
 

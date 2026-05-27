@@ -126,13 +126,13 @@ export async function saveGrowthModeToPlaybook(formData: FormData) {
   const workspace = await getActiveWorkspace();
 
 
-  const product = String(formData.get("product") ?? "");
-  const idealCustomer = String(formData.get("idealCustomer") ?? "");
-  const industries = String(formData.get("industries") ?? "");
-  const pains = String(formData.get("pains") ?? "");
-  const proofPoints = String(formData.get("proofPoints") ?? "");
-  const tone = String(formData.get("tone") ?? "");
-  const positioning = String(formData.get("positioning") ?? "");
+  const parsed = playbookSchema.partial().safeParse(Object.fromEntries(formData.entries()));
+
+  if (!parsed.success) {
+    redirect("/?lead=invalid#playbook");
+  }
+
+  const { product, idealCustomer, industries, pains, proofPoints, tone, positioning } = parsed.data;
 
   try {
     await prisma.workspacePlaybook.upsert({
@@ -140,20 +140,20 @@ export async function saveGrowthModeToPlaybook(formData: FormData) {
       update: {
         product,
         idealCustomer,
-        industries: parseListInput(industries),
-        pains: parseListInput(pains),
-        proofPoints: parseListInput(proofPoints),
+        industries: industries ? parseListInput(industries) : undefined,
+        pains: pains ? parseListInput(pains) : undefined,
+        proofPoints: proofPoints ? parseListInput(proofPoints) : undefined,
         tone,
         positioning,
       },
       create: {
         workspaceId: workspace.id,
-        product,
-        idealCustomer,
-        industries: parseListInput(industries),
-        pains: parseListInput(pains),
-        proofPoints: parseListInput(proofPoints),
-        tone,
+        product: product || "",
+        idealCustomer: idealCustomer || "",
+        industries: industries ? parseListInput(industries) : [],
+        pains: pains ? parseListInput(pains) : [],
+        proofPoints: proofPoints ? parseListInput(proofPoints) : [],
+        tone: tone || "",
         positioning,
       },
     });
@@ -194,10 +194,7 @@ export async function createTraceSavedView(formData: FormData) {
 }
 
 export async function removeTraceSavedView(formData: FormData) {
-  const viewId = formData.get("viewId");
-  if (typeof viewId !== "string") {
-    redirect("/?view=traces&run=invalid");
-  }
+  const viewId = z.string().min(1).parse(formData.get("viewId"));
 
   const workspace = await getActiveWorkspace();
   await deleteTraceSavedView(workspace.slug, viewId);

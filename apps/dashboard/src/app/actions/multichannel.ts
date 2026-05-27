@@ -715,8 +715,8 @@ export async function enrollLeadInSequence(formData: FormData) {
 }
 
 export async function pauseSequenceEnrollment(formData: FormData) {
-  const enrollmentId = String(formData.get("enrollmentId") ?? "");
-  const leadId = String(formData.get("leadId") ?? "");
+  const enrollmentId = z.string().min(1).parse(formData.get("enrollmentId"));
+  const leadId = z.string().min(1).parse(formData.get("leadId"));
 
   if (!hasDatabaseUrl()) {
     redirect(`/leads/${leadId}?run=db-not-configured`);

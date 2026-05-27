@@ -52,7 +52,8 @@ export async function addDncEntry(formData: FormData) {
   }
 }
 
-export async function toggleSso(enabled: boolean) {
+export async function toggleSso(rawEnabled: boolean) {
+  const enabled = z.boolean().parse(rawEnabled);
   if (!hasDatabaseUrl()) return { success: false };
   try {
     const prisma = getPrisma();

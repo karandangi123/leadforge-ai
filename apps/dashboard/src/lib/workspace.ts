@@ -1,5 +1,5 @@
 import "server-only";
-import { getPrisma } from "@leadforge/db";
+import { getPrisma, hasDatabaseUrl } from "@leadforge/db";
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 
@@ -30,6 +30,22 @@ export async function getActiveWorkspace(slug?: string) {
   };
 
   if (session.user.id === "demo-user") {
+    if (hasDatabaseUrl()) {
+      try {
+        const prisma = getPrisma();
+        await prisma.workspace.upsert({
+          where: { id: "demo" },
+          update: {},
+          create: {
+            id: "demo",
+            name: "Demo Workspace",
+            slug: "demo",
+          },
+        });
+      } catch (e) {
+        console.warn("Failed to ensure demo workspace in DB:", e);
+      }
+    }
     return demoWorkspace;
   }
 

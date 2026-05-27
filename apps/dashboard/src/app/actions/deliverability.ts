@@ -5,6 +5,9 @@ import dns from "dns";
 import { promisify } from "util";
 import { getPrisma, hasDatabaseUrl } from "@leadforge/db";
 import { getActiveWorkspace } from "@/lib/workspace";
+import { z } from "zod";
+
+const DomainSchema = z.string().min(3).max(255).regex(/^[a-zA-Z0-9][a-zA-Z0-9-]{1,61}[a-zA-Z0-9]\.[a-zA-Z]{2,}$/);
 
 const resolveTxt = promisify(dns.resolveTxt);
 const resolveCname = promisify(dns.resolveCname);
@@ -13,7 +16,8 @@ const resolveCname = promisify(dns.resolveCname);
  * Perform a live DNS check for SPF, DKIM, and DMARC records on a specific domain.
  * This is a foundational check that ensures fundamental email authentication is correctly configured.
  */
-export async function checkDomainDnsHealth(domain: string) {
+export async function checkDomainDnsHealth(rawDomain: string) {
+  const domain = DomainSchema.parse(rawDomain);
   let spfStatus: "PASS" | "FAIL" | "PENDING" = "FAIL";
   let dmarcStatus: "PASS" | "FAIL" | "PENDING" = "FAIL";
   let dkimStatus: "PASS" | "FAIL" | "PENDING" = "FAIL"; // DKIM is harder to check blindly without a selector, but we'll simulate or check standard selectors if needed.

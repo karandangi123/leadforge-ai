@@ -10,18 +10,25 @@ import {
   LayoutDashboard,
   Search,
   Bell,
-  Plus
+  Plus,
+  Printer
 } from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { fastAudit } from "@/app/actions/vision-audit";
+import { toast } from "sonner";
 
 export function WarRoomShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex h-screen bg-obsidian text-white selection:bg-leadforge-blue/30 overflow-hidden font-sans">
-      <Sidebar />
+      <div className="no-print">
+        <Sidebar />
+      </div>
       <div className="flex-1 flex flex-col min-w-0 relative">
-        <TopBar />
-        <main className="flex-1 overflow-y-auto bg-obsidian scrollbar-hide">
+        <div className="no-print">
+          <TopBar />
+        </div>
+        <main className="flex-1 overflow-y-auto bg-obsidian scrollbar-hide print:bg-white print:overflow-visible">
           {children}
         </main>
       </div>
@@ -85,17 +92,47 @@ function Sidebar() {
 }
 
 function TopBar() {
+  const [url, setUrl] = React.useState("");
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const router = useRouter();
+
+  const handleAudit = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!url || isSubmitting) return;
+
+    setIsSubmitting(true);
+    const toastId = toast.loading("Engaging forensic lens...");
+
+    try {
+      const res = await fastAudit(url);
+      if (res.success) {
+        toast.success("Lead ingested. Initializing forensic scan.", { id: toastId });
+        setUrl("");
+        router.refresh();
+      } else {
+        toast.error(res.error || "Ingest failed.", { id: toastId });
+      }
+    } catch (error) {
+      toast.error("Forensic engine connection failed.", { id: toastId });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return (
     <header className="h-20 border-b border-steel bg-obsidian/50 backdrop-blur-xl px-8 flex items-center justify-between z-40 sticky top-0">
       <div className="flex items-center gap-6 flex-1">
-        <div className="relative max-w-md w-full lg:block hidden">
+        <form onSubmit={handleAudit} className="relative max-w-md w-full lg:block hidden">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-mist" />
           <input 
             type="text" 
-            placeholder="Engage forensic lens (enter URL)..." 
-            className="w-full bg-zircon border border-steel rounded-2xl py-2.5 pl-12 pr-4 text-sm focus:outline-none focus:border-leadforge-blue focus:ring-4 focus:ring-leadforge-blue/5 transition-all text-white placeholder:text-zinc-600"
+            value={url}
+            onChange={(e) => setUrl(e.target.value)}
+            disabled={isSubmitting}
+            placeholder={isSubmitting ? "Scanning..." : "Engage forensic lens (enter URL)..."} 
+            className="w-full bg-zircon border border-steel rounded-2xl py-2.5 pl-12 pr-4 text-sm focus:outline-none focus:border-leadforge-blue focus:ring-4 focus:ring-leadforge-blue/5 transition-all text-white placeholder:text-zinc-600 disabled:opacity-50"
           />
-        </div>
+        </form>
       </div>
 
       <div className="flex items-center gap-4">
@@ -103,9 +140,20 @@ function TopBar() {
           <Bell className="w-5 h-5 text-mist" />
           <div className="absolute top-2.5 right-2.5 w-2 h-2 rounded-full bg-crimson border-2 border-obsidian" />
         </button>
-        <button className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-white text-black font-black text-xs uppercase tracking-widest hover:bg-leadforge-blue hover:text-white transition-all shadow-[0_10px_30px_rgba(0,0,0,0.3)] group">
+        <button 
+          onClick={() => window.print()}
+          className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-leadforge-blue/10 border border-leadforge-blue/20 text-leadforge-blue font-black text-xs uppercase tracking-widest hover:bg-leadforge-blue hover:text-white transition-all group"
+        >
+          <Printer className="w-4 h-4 group-hover:scale-110 transition-transform" />
+          Export Dossier
+        </button>
+        <button 
+          onClick={() => handleAudit()}
+          disabled={isSubmitting || !url}
+          className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-white text-black font-black text-xs uppercase tracking-widest hover:bg-leadforge-blue hover:text-white transition-all shadow-[0_10px_30px_rgba(0,0,0,0.3)] group disabled:opacity-50"
+        >
           <Plus className="w-4 h-4 group-hover:rotate-90 transition-transform" />
-          New Audit
+          {isSubmitting ? "Auditing..." : "New Audit"}
         </button>
         <div className="w-10 h-10 rounded-xl bg-steel border border-white/10 flex items-center justify-center font-bold text-xs">
           KD

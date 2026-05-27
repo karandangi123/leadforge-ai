@@ -4,11 +4,13 @@ import { auth } from "@/auth";
 import { getPrisma } from "@leadforge/db";
 import { verifyMfaToken } from "@/lib/mfa";
 import { unstable_update } from "@/auth";
+import { z } from "zod";
 
 /**
  * Verifies the MFA token during the login flow and updates the session
  */
-export async function verifyMfaLogin(token: string) {
+export async function verifyMfaLogin(rawToken: string) {
+  const token = z.string().min(6).max(8).parse(rawToken);
   const session = await auth();
   if (!session?.user?.id) throw new Error("Unauthorized");
 
